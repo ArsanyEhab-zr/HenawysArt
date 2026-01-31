@@ -33,7 +33,7 @@ const Shop = () => {
             </h1>
             <p className="text-lg text-text-light max-w-2xl mx-auto">
               Discover our handcrafted art pieces, each created with love and natural materials.
-              Transform your precious memories into timeless works of art.
+              Transform your precious memories into timeless works arsany of art.
             </p>
           </motion.div>
         </div>
