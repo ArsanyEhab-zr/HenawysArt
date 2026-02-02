@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#6da3c2',
-          dark: '#5a8ba8',
-          light: '#80b4d4',
+          DEFAULT: '#5e92b8', // لونك الأساسي
+          dark: '#4a7594',    // درجة أغمق قليلًا (ممتازة للـ Hover)
+          light: '#89b3d3',   // درجة أفتح (للخلفيات الخفيفة)
         },
         accent: {
           DEFAULT: '#ECC846',
