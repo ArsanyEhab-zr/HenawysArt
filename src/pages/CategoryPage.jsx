@@ -5,31 +5,31 @@ import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import ProductCard from '../components/ProductCard'
 import OrderModal from '../components/OrderModal'
-import { supabase } from '../supabaseClient' // 1. استيراد سوبا بيز
+import { supabase } from '../supabaseClient'
 
 const CategoryPage = () => {
   const { category } = useParams()
-  const [products, setProducts] = useState([]) // استبدلنا البيانات الثابتة بالـ State
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // 2. دالة لجلب اسم القسم بشكل جميل (Capitalize)
   const categoryName = category ? category.charAt(0).toUpperCase() + category.slice(1) : ''
 
   useEffect(() => {
     fetchCategoryProducts()
-  }, [category]) // الـ Effect دي هتشتغل كل ما الـ category يتغير في الرابط
+  }, [category])
 
   const fetchCategoryProducts = async () => {
     try {
       setLoading(true)
       
-      // 3. الاستعلام من قاعدة البيانات
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('category', category) // هات المنتجات اللي خانة الـ category فيها بتساوي القسم الحالي
+        .eq('category', category)
+        // 👇 هذا هو التعديل: ترتيب المنتجات حسب السعر تصاعدياً
+        .order('price', { ascending: true })
 
       if (error) throw error
 
@@ -51,7 +51,6 @@ const CategoryPage = () => {
     setSelectedProduct(null)
   }
 
-  // 4. حالة التحميل
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -60,7 +59,6 @@ const CategoryPage = () => {
     )
   }
 
-  // 5. حالة عدم وجود منتجات
   if (!products || products.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
@@ -86,7 +84,6 @@ const CategoryPage = () => {
     <div className="min-h-screen">
       <Navbar />
 
-      {/* Header Section */}
       <section className="pt-24 pb-12 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -121,7 +118,6 @@ const CategoryPage = () => {
         </div>
       </section>
 
-      {/* Products Grid */}
       <section className="pb-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -133,7 +129,6 @@ const CategoryPage = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                {/* تأكد إن الـ ProductCard بيستقبل البيانات بنفس أسماء الأعمدة في قاعدة البيانات */}
                 <ProductCard
                   product={product}
                   onOrderClick={handleOrderClick}
@@ -145,7 +140,6 @@ const CategoryPage = () => {
         </div>
       </section>
 
-      {/* Order Modal */}
       <OrderModal
         isOpen={isModalOpen}
         onClose={closeModal}
