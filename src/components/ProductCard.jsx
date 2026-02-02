@@ -14,18 +14,23 @@ const ProductCard = ({ product, onOrderClick, isCategoryPage = false }) => {
     >
       {/* Image Area */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
-        {product.image ? (
+        
+        {/* 1. التعديل هنا: استخدام image_url بدلاً من image */}
+        {product.image_url ? (
           <img
-            src={product.image}
+            src={product.image_url}
             alt={product.title}
-            className="w-full h-full object-cover"
+            // 2. ضفنا z-10 و relative عشان الصورة تظهر فوق الخلفية
+            className="w-full h-full object-cover relative z-10" 
             onError={(e) => {
+              // لو الصورة فيها مشكلة، نخفيها عشان الخلفية تظهر
               e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
             }}
           />
         ) : null}
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+
+        {/* 3. الخلفية (Fallback): ضفنا absolute inset-0 عشان تكون تحت الصورة بالظبط */}
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
           <span className="text-text-light text-sm text-center px-4">
             {product.title}<br/>
             <span className="text-xs">Image coming soon</span>
