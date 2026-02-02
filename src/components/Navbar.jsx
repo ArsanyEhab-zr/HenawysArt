@@ -48,7 +48,7 @@ const Navbar = () => {
               className="flex-shrink-0"
             >
               <h1 className="text-3xl font-script text-primary font-bold">
-                Henawy's Art zr
+                Henawy's Art 
               </h1>
             </motion.div>
           </Link>
