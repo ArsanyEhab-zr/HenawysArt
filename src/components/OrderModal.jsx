@@ -231,7 +231,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                                     <span className="text-gray-700">Add Wooden Stand <span className="text-primary font-bold">(+20)</span></span>
                                 </div>
                                  {/* 👇 صورة للستاند الخشب */}
-                                <img src="/images/stand.jpg" alt="stand" className="w-12 h-12 rounded object-cover border border-gray-200" />
+                                <img src="public\images\stand.jpg" alt="stand" className="w-12 h-12 rounded object-cover border border-gray-200" />
                             </label>
                         </div>
                     )}
