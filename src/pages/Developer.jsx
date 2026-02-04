@@ -25,11 +25,11 @@ const Developer = () => {
             
             {/* الصورة نفسها في شكل غير منتظم قليلاً */}
             <div className="relative w-full h-full rounded-[35%_65%_60%_40%/35%_45%_65%_55%] overflow-hidden border-4 border-white shadow-lg transform rotate-3 transition-transform duration-500 group-hover:rotate-0">
-               <img 
-                 src="public\IMG-20260126-WA0392.jpg.jpeg" // 👈 صورتك هنا
-                 alt="Arsany zika" 
-                 className="w-full h-full object-cover"
-               />
+            <img 
+            src="/me.jpg" 
+            alt="Arsany zika" 
+            className="w-full h-full object-cover"
+            />
             </div>
             
             {/* أيقونة فنية صغيرة */}
@@ -44,7 +44,7 @@ const Developer = () => {
           
           <div className="flex items-center justify-center gap-2 mb-6">
             <span className="h-px w-8 bg-primary/30"></span>
-            <p className="text-lg text-primary font-medium tracking-wide uppercase text-xs">
+            <p className="text-lg text-primary font-medium tracking-wide uppercase">
               Digital Craftsman & Full Stack Developer
             </p>
             <span className="h-px w-8 bg-primary/30"></span>
