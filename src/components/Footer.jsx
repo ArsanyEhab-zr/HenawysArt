@@ -71,7 +71,7 @@ const Footer = () => {
           
           <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
             <span>Built with support from</span>
-            <Link to="pages\Developer.jsx" className="text-primary font-bold hover:underline flex items-center gap-1">
+            <Link to="/developer" className="text-primary font-bold hover:underline flex items-center gap-1">
                Arsany zika <Heart size={14} className="fill-current" />
             </Link>
           </div>
