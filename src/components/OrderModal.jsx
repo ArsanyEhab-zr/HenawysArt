@@ -127,6 +127,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     if (selectedFile) setIsUploading(true)
 
+    // 1. رفع الصورة
     let uploadedImageUrl = ''
     if (selectedFile) {
         uploadedImageUrl = await uploadImage(selectedFile)
@@ -136,6 +137,16 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         }
     }
 
+    // 2. 🆕 تسجيل المبيعات (عشان Top Sellers يشتغل)
+    try {
+        const { error } = await supabase
+            .rpc('increment_sold_count', { product_id: product.id })
+        if (error) console.error('Error updating sales count:', error)
+    } catch (err) {
+        console.error('Failed to increment sales:', err)
+    }
+
+    // 3. تجهيز رسالة الواتساب
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
     
