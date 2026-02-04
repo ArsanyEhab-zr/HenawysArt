@@ -95,13 +95,18 @@ const About = () => {
                  
                  <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                     {/* Old Logo Placeholder */}
-                    <div className="text-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                       <div className="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-400">
-                          <span className="text-xs text-gray-500 font-bold">Old Logo (2023)</span>
-                          💡  <img src="/oldLogo.jpeg" />
-                       </div>
-                       <p className="text-sm text-gray-400">Where we started</p>
-                    </div>
+                                    <div className="text-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                                        {/* ضيفنا overflow-hidden عشان الصورة متخرجش بره الدايرة */}
+                                        <div className="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-400 overflow-hidden relative">
+                                            {/* 👇 كود الصورة الصح */}
+                                            <img 
+                                                src="/oldLogo.jpeg" 
+                                                alt="Old Logo" 
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <p className="text-sm text-gray-400">Where we started</p>
+                                    </div>
 
                     <ArrowRight className="text-primary hidden md:block" size={32} />
                     <div className="md:hidden rotate-90 text-primary"><ArrowRight size={32} /></div>
@@ -111,7 +116,7 @@ const About = () => {
                        <div className="w-40 h-40 mx-auto bg-white rounded-full flex items-center justify-center mb-3 shadow-lg border-4 border-primary/20">
                           <img src="/logo.png" alt="Henawy's Art New Logo" className="w-28 object-contain" />
                        </div>
-                       <p className="text-sm text-primary font-bold">New Era (2025)</p>
+                       <p className="text-sm text-primary font-bold">New Era (2026)</p>
                     </div>
                  </div>
               </div>
@@ -234,23 +239,25 @@ const About = () => {
                 </div>
               </motion.div>
 
-              {/* Workspace Visual */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="relative"
-              >
-                <div className="aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                   {/* 💡 حط صورة الاستوديو او شغلك هنا */}
-                   <div className="w-full h-full bg-stone-200 flex items-center justify-center">
-                      <Palette className="w-16 h-16 text-stone-400" />
-                   </div>
-                </div>
-                {/* ديكور بسيط */}
-                <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary rounded-full opacity-10"></div>
-              </motion.div>
+{/* Workspace Visual */}
+<motion.div
+  initial={{ opacity: 0, x: 20 }}
+  whileInView={{ opacity: 1, x: 0 }}
+  viewport={{ once: true }}
+  transition={{ duration: 0.6, delay: 0.2 }}
+  className="relative"
+>
+  <div className="aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white transform rotate-2 hover:rotate-0 transition-transform duration-500">
+      {/* 👇 التعديل هنا: ضيفنا slash والستايل عشان تملأ المكان */}
+      <img 
+        src="/Picsart_26-02-04_10-56-04-378.png" 
+        alt="Our Workspace" 
+        className="w-full h-full object-cover"
+      />
+  </div>
+  {/* ديكور بسيط */}
+  <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary rounded-full opacity-10"></div>
+</motion.div>
           </div>
         </div>
       </section>
