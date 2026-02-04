@@ -1,8 +1,14 @@
 import { motion } from 'framer-motion'
-import { Heart, TreePine, Sparkles, Palette } from 'lucide-react'
+import { Heart, TreePine, Sparkles, Palette, Calendar, Users, ShoppingBag, ArrowRight } from 'lucide-react'
 import Navbar from '../components/Navbar'
 
 const About = () => {
+  const stats = [
+    { label: "Founded", value: "Dec 16, 2023", icon: Calendar },
+    { label: "Orders Delivered", value: "+450", icon: ShoppingBag },
+    { label: "Happy Clients", value: "+1000", icon: Users },
+  ]
+
   const values = [
     {
       icon: Heart,
@@ -25,81 +31,134 @@ const About = () => {
     <div className="min-h-screen">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="pt-24 pb-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 1. Hero Section */}
+      <section className="pt-32 pb-20 bg-background relative overflow-hidden">
+        {/* خلفية زخرفية */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8 }}
             className="text-center"
           >
-            <h1 className="text-5xl md:text-6xl font-script text-text mb-6">
+            <h1 className="text-5xl md:text-7xl font-script text-text mb-6">
               Behind the Art
             </h1>
-            <p className="text-xl text-text-light max-w-3xl mx-auto leading-relaxed">
-              Every stroke tells a story. Every piece carries a memory.
-              Welcome to the world of faceless art, where emotions speak louder than faces.
+            <p className="text-xl md:text-2xl text-text-light max-w-3xl mx-auto leading-relaxed font-light">
+              From a small desk to over <span className="text-primary font-bold">450 homes</span>. 
+              This is the story of Henawy's Art.
             </p>
           </motion.div>
-        </div>
-      </section>
 
-      {/* Story Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Image Placeholder */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center shadow-lg">
-                <div className="text-center">
-                  <Palette className="w-24 h-24 text-primary/40 mx-auto mb-4" />
-                  <p className="text-text-light font-medium">Artist at Work</p>
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-16">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2 }}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-center gap-4 hover:shadow-md transition-shadow"
+              >
+                <div className="p-3 bg-primary/10 rounded-full text-primary">
+                   <stat.icon size={24} />
                 </div>
-              </div>
-            </motion.div>
-
-            {/* Story Content */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-6"
-            >
-              <h2 className="text-3xl md:text-4xl font-script text-text">
-                Our Passion for Faceless Art
-              </h2>
-              <div className="space-y-4 text-text-light leading-relaxed">
-                <p>
-                  Henawy's Art was born from a simple belief: that the most powerful stories
-                  are told through emotions, not faces. Our faceless art style captures the
-                  essence of human connection, focusing on gestures, colors, and the subtle
-                  language of the heart.
-                </p>
-                <p>
-                  Each piece begins with a natural wood slice, carefully selected for its
-                  unique grain and character. We paint not what we see, but what we feel –
-                  the warmth of a hug, the comfort of home, the joy of shared moments.
-                </p>
-                <p>
-                  From custom paintings to personalized medals and frames, every creation
-                  is a testament to the beauty of sentimental art. We believe that true
-                  artistry lies in preserving memories that matter most.
-                </p>
-              </div>
-            </motion.div>
+                <div className="text-left">
+                   <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+                   <p className="text-sm text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Values Section */}
+      {/* 2. Story & Logo Evolution (Rebranding) */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            
+            {/* Logo Evolution Visual */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="relative"
+            >
+              <div className="relative bg-white rounded-[3rem] p-8 shadow-xl border border-stone-100 overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-accent"></div>
+                 
+                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                    {/* Old Logo Placeholder */}
+                    <div className="text-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                       <div className="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-400">
+                          <span className="text-xs text-gray-500 font-bold">Old Logo (2023)</span>
+                          💡  <img src="/oldLogo.jpeg" />
+                       </div>
+                       <p className="text-sm text-gray-400">Where we started</p>
+                    </div>
+
+                    <ArrowRight className="text-primary hidden md:block" size={32} />
+                    <div className="md:hidden rotate-90 text-primary"><ArrowRight size={32} /></div>
+
+                    {/* New Logo Placeholder */}
+                    <div className="text-center transform scale-110">
+                       <div className="w-40 h-40 mx-auto bg-white rounded-full flex items-center justify-center mb-3 shadow-lg border-4 border-primary/20">
+                          <img src="/logo.png" alt="Henawy's Art New Logo" className="w-28 object-contain" />
+                       </div>
+                       <p className="text-sm text-primary font-bold">New Era (2025)</p>
+                    </div>
+                 </div>
+              </div>
+              
+              {/* Decorative elements */}
+              <div className="absolute -z-10 top-10 -left-10 w-40 h-40 bg-accent/20 rounded-full blur-3xl"></div>
+              <div className="absolute -z-10 bottom-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl"></div>
+            </motion.div>
+
+            {/* Story Content */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="space-y-6"
+            >
+              <div className="inline-block px-4 py-1 bg-primary/10 text-primary rounded-full text-sm font-bold mb-2">
+                 Since 16/12/2023
+              </div>
+              <h2 className="text-4xl md:text-5xl font-script text-text mb-4">
+                Growing with Art
+              </h2>
+              <div className="space-y-4 text-text-light leading-relaxed text-lg">
+                <p>
+                  It all started on <span className="font-bold text-gray-800">December 16, 2023</span>. 
+                  Henawy's Art was born from a simple belief: that the most powerful stories 
+                  are told through emotions, not faces.
+                </p>
+                <p>
+                  We started with a humble logo and a big dream. As our art evolved, so did our identity. 
+                  Our rebranding represents our growth from a small hobby into a professional studio 
+                  trusted by hundreds.
+                </p>
+                <p>
+                  Today, after delivering over <span className="font-bold text-primary">450 orders</span>, 
+                  our mission remains the same: transforming natural wood slices into 
+                  timeless memories that speak the language of the heart.
+                </p>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Values Section */}
       <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -125,19 +184,16 @@ const About = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-                className="text-center p-8 rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300"
+                whileHover={{ y: -10 }}
+                className="text-center p-8 rounded-3xl bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-stone-50 hover:border-primary/20 transition-all duration-300"
               >
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-6"
-                >
-                  <value.icon className="w-8 h-8 text-primary" />
-                </motion.div>
-                <h3 className="text-2xl font-script text-text mb-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl mb-6 rotate-3 hover:rotate-6 transition-transform">
+                  <value.icon className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">
                   {value.title}
                 </h3>
-                <p className="text-text-light leading-relaxed">
+                <p className="text-gray-500 leading-relaxed">
                   {value.description}
                 </p>
               </motion.div>
@@ -146,64 +202,59 @@ const About = () => {
         </div>
       </section>
 
-      {/* Workspace Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 to-accent/5">
+      {/* 4. Workspace Section */}
+      <section className="py-20 bg-[#fdfbf7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Workspace Image */}
-              <motion.div
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+             {/* Text */}
+             <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="relative order-2 lg:order-1"
-              >
-                <div className="aspect-video rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center shadow-lg">
-                  <div className="text-center">
-                    <TreePine className="w-20 h-20 text-primary/40 mx-auto mb-4" />
-                    <p className="text-text-light font-medium">Creative Workspace</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Workspace Content */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="text-center lg:text-left order-1 lg:order-2"
+                transition={{ duration: 0.6 }}
+                className="text-center lg:text-left"
               >
                 <h2 className="text-3xl md:text-4xl font-script text-text mb-6">
                   Where Art Comes to Life
                 </h2>
-                <p className="text-lg text-text-light leading-relaxed mb-6">
+                <p className="text-lg text-text-light leading-relaxed mb-8">
                   Our studio is a sanctuary of creativity, where natural light dances
                   with wood grains and paints whisper stories yet to be told.
                   Every piece begins here, in this space dedicated to preserving memories.
                 </p>
-                <div className="flex flex-wrap justify-center lg:justify-start gap-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Sparkles size={18} />
-                    <span className="font-medium">Natural Light</span>
+                <div className="flex flex-wrap justify-center lg:justify-start gap-6">
+                  <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
+                    <Sparkles size={20} className="text-accent" />
+                    <span className="font-medium">Creative Studio</span>
                   </div>
-                  <div className="flex items-center gap-2 text-primary">
-                    <Heart size={18} />
-                    <span className="font-medium">Love in Every Stroke</span>
+                  <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
+                    <Heart size={20} className="text-primary" />
+                    <span className="font-medium">Made with Love</span>
                   </div>
                 </div>
               </motion.div>
-            </div>
-          </motion.div>
+
+              {/* Workspace Visual */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="relative"
+              >
+                <div className="aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                   {/* 💡 حط صورة الاستوديو او شغلك هنا */}
+                   <div className="w-full h-full bg-stone-200 flex items-center justify-center">
+                      <Palette className="w-16 h-16 text-stone-400" />
+                   </div>
+                </div>
+                {/* ديكور بسيط */}
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary rounded-full opacity-10"></div>
+              </motion.div>
+          </div>
         </div>
       </section>
+
     </div>
   )
 }
