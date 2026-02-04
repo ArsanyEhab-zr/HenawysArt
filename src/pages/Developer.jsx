@@ -26,7 +26,7 @@ const Developer = () => {
             {/* الصورة نفسها في شكل غير منتظم قليلاً */}
             <div className="relative w-full h-full rounded-[35%_65%_60%_40%/35%_45%_65%_55%] overflow-hidden border-4 border-white shadow-lg transform rotate-3 transition-transform duration-500 group-hover:rotate-0">
             <img 
-            src="/me.jpg" 
+            src="/me.jpeg" 
             alt="Arsany zika" 
             className="w-full h-full object-cover"
             />
