@@ -1,19 +1,28 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, Send, Loader2, ImagePlus } from 'lucide-react' // ضيفنا ايقونات جديدة
+import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
 
+const GOVERNORATES = [
+  "Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum",
+  "Gharbiya", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley",
+  "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta",
+  "Sharkia", "South Sinai", "Kafr El Sheikh", "Matrouh", "Luxor",
+  "Qena", "North Sinai", "Sohag"
+]
+
 const OrderModal = ({ isOpen, onClose, product }) => {
   const [customerName, setCustomerName] = useState('')
+  const [governorate, setGovernorate] = useState('')
+  const [customText, setCustomText] = useState('')
+  const [bgColor, setBgColor] = useState('')
   const [notes, setNotes] = useState('')
-  
-  // States للإضافات
+
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [selections, setSelections] = useState({})
 
-  // States للصورة المرفوعة 🆕
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -21,7 +30,10 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     if (isOpen && product) {
       fetchAddons()
       setSelections({})
-      setSelectedFile(null) // تصفير الصورة
+      setSelectedFile(null)
+      setCustomText('')
+      setBgColor('')
+      setGovernorate('')
     }
   }, [product, isOpen])
 
@@ -73,36 +85,29 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     Object.values(selections).forEach(addon => {
       if (addon.operation_type === 'percent_double_discount') return
-
-      if (addon.operation_type === 'fixed') {
-        finalTotal += Number(addon.value)
-      } else if (addon.operation_type === 'percent_add') {
+      if (addon.operation_type === 'fixed') finalTotal += Number(addon.value)
+      else if (addon.operation_type === 'percent_add') {
         const surcharge = basePrice * (Number(addon.value) / 100)
         finalTotal += surcharge
       }
     })
-
     return Math.ceil(finalTotal)
   }
 
   const finalPrice = calculateTotal()
 
-  // 🆕 دالة رفع الصورة لـ Supabase
   const uploadImage = async (file) => {
     try {
-        // 1. تغيير اسم الملف عشان ميتكررش (مثلا: timestamp-filename.jpg)
         const fileExt = file.name.split('.').pop()
         const fileName = `${Date.now()}.${fileExt}`
         const filePath = `${fileName}`
 
-        // 2. الرفع
         const { error: uploadError } = await supabase.storage
-            .from('client-uploads') // تأكد ان ده اسم الـ Bucket اللي عملته
+            .from('client-uploads')
             .upload(filePath, file)
 
         if (uploadError) throw uploadError
 
-        // 3. هات الرابط
         const { data } = supabase.storage
             .from('client-uploads')
             .getPublicUrl(filePath)
@@ -118,47 +123,42 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
+    if (!governorate) { alert('Please select your governorate'); return }
 
-    // تشغيل حالة التحميل لو فيه صورة
     if (selectedFile) setIsUploading(true)
 
     let uploadedImageUrl = ''
-    
-    // 🆕 لو العميل اختار صورة، ارفعها الأول
     if (selectedFile) {
         uploadedImageUrl = await uploadImage(selectedFile)
         if (!uploadedImageUrl) {
             setIsUploading(false)
-            return // وقف العملية لو الرفع فشل
+            return
         }
     }
 
-    // تجهيز الرسالة
-    let detailsString = `\n--- Order Details ---\n`
-    const selectedList = Object.values(selections)
+    let detailsString = `\n--- 📋 Order Details ---\n`
+    detailsString += `📍 Location: ${governorate}\n`
+    
+    if (customText) detailsString += `✍️ Text/Date: "${customText}"\n`
+    if (bgColor) detailsString += `🎨 Bg Color: ${bgColor}\n`
 
-    if (selectedList.length === 0) detailsString += `• Base Item: ${product.price} EGP\n`
+    const selectedList = Object.values(selections)
+    if (selectedList.length === 0) detailsString += `• Base Item Only\n`
 
     selectedList.forEach(addon => {
       let costText = ''
-      if (addon.operation_type === 'fixed') costText = `(+${addon.value} EGP)`
-      else if (addon.operation_type === 'percent_add') {
-        const val = Math.ceil(Number(product.price) * (Number(addon.value) / 100))
-        costText = `(${addon.value}% Surcharge: +${val} EGP)`
-      } 
-      else if (addon.operation_type === 'percent_double_discount') costText = `(2 Pieces @ ${addon.value}% OFF)`
-      detailsString += `• ${addon.title}: Yes ${costText}\n`
+      if (addon.operation_type === 'fixed') costText = `(+${addon.value})`
+      else if (addon.operation_type === 'percent_add') costText = `(+${addon.value}%)`
+      else if (addon.operation_type === 'percent_double_discount') costText = `(${addon.value}% OFF)`
+      detailsString += `• ${addon.title} ${costText}\n`
     })
 
-    // 🆕 إضافة رابط الصورة للرسالة
-    if (uploadedImageUrl) {
-        detailsString += `\n🖼️ Reference Image Link:\n${uploadedImageUrl}\n`
-    }
+    if (uploadedImageUrl) detailsString += `\n🖼️ Ref Image: ${uploadedImageUrl}\n`
 
-    detailsString += `\n💰 Final Calculated Price: ${finalPrice} EGP`
+    detailsString += `\n💵 Final Price: ${finalPrice} EGP`
+    detailsString += `\n⚠️ Client aware of: 10-14 days delivery & 50% Wallet Deposit (No Instapay).`
     
     openWhatsAppChat(product, customerName, notes + detailsString)
-    
     setIsUploading(false)
     onClose()
   }
@@ -185,7 +185,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-               {/* Addons Section */}
+               
+               {/* 1. Addons */}
                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                  {loadingAddons ? <Loader2 className="animate-spin mx-auto"/> : availableAddons.map(addon => {
                    const isSelected = !!selections[addon.id]
@@ -209,52 +210,118 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                  })}
                </div>
 
-               {/* 🆕 Image Upload Input */}
+               {/* 2. Image Upload */}
                <div>
                  <label className="block text-sm font-medium text-text mb-2">Upload Reference Image (Optional)</label>
                  <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'}`}>
-                    <input 
-                        type="file" 
-                        accept="image/*"
-                        className="hidden" 
-                        id="image-upload"
-                        onChange={(e) => setSelectedFile(e.target.files[0])}
-                    />
+                    <input type="file" accept="image/*" className="hidden" id="image-upload" onChange={(e) => setSelectedFile(e.target.files[0])} />
                     <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-2">
                         {selectedFile ? (
-                            <>
-                                <ImagePlus className="text-primary" size={32} />
-                                <span className="text-sm text-primary font-semibold">{selectedFile.name}</span>
-                                <span className="text-xs text-gray-500">Click to change</span>
-                            </>
+                            <> <ImagePlus className="text-primary" size={32} /> <span className="text-sm text-primary font-semibold">{selectedFile.name}</span> </>
                         ) : (
-                            <>
-                                <Upload className="text-gray-400" size={32} />
-                                <span className="text-sm text-gray-600">Click to upload image</span>
-                                <span className="text-xs text-gray-400">JPG, PNG supported</span>
-                            </>
+                            <> <Upload className="text-gray-400" size={32} /> <span className="text-sm text-gray-600">Click to upload image</span> </>
                         )}
                     </label>
                  </div>
                </div>
 
-               <input placeholder="Your Name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full p-3 border rounded-lg" required />
-               <textarea placeholder="Notes..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-3 border rounded-lg" />
+               <hr className="border-gray-100" />
+
+               {/* 3. Customization Fields */}
+               <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                        <Type size={16} /> Text / Date on Item
+                    </label>
+                    <input 
+                        type="text" 
+                        value={customText}
+                        onChange={e => setCustomText(e.target.value)}
+                        placeholder="E.g., 12/5/2025 or 'Happy Birthday'"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                        <Palette size={16} /> Background Color
+                    </label>
+                    <input 
+                        type="text" 
+                        value={bgColor}
+                        onChange={e => setBgColor(e.target.value)}
+                        placeholder="E.g., Navy Blue, Black, Pastel Pink..."
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+               </div>
+
+               <hr className="border-gray-100" />
+
+               {/* 4. Location & Name */}
+               <div className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
+                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-lg" placeholder="Full Name" required />
+                 </div>
+                 
+                 <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                        <MapPin size={16} /> Governorate *
+                    </label>
+                    <select 
+                        value={governorate} 
+                        onChange={e => setGovernorate(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white"
+                        required
+                    >
+                        <option value="">Select Governorate</option>
+                        {GOVERNORATES.map(gov => (
+                            <option key={gov} value={gov}>{gov}</option>
+                        ))}
+                    </select>
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-text mb-2">Notes</label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-lg resize-none" placeholder="Any extra instructions..." />
+                 </div>
+               </div>
+
+               {/* 5. Important Notices Box */}
+               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                            <AlertCircle className="text-blue-600" size={20} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-blue-800">Delivery Time</h4>
+                            <p className="text-xs text-blue-700 mt-1">Order takes <span className="font-bold">10 to 14 days</span> to be ready.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                            <Wallet className="text-blue-600" size={20} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-blue-800">Payment Policy</h4>
+                            <p className="text-xs text-blue-700 mt-1">
+                                <span className="font-bold">50% Deposit</span> required via Wallet on same WhatsApp number.
+                            </p>
+                            <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">
+                                🚫 No Instapay
+                            </p>
+                        </div>
+                    </div>
+               </div>
                
                <button 
                 type="submit" 
                 disabled={isUploading}
-                className={`w-full bg-accent text-text font-bold py-3 rounded-lg flex justify-center items-center gap-2 ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`w-full bg-accent text-text font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg hover:shadow-xl transition-all ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                >
-                 {isUploading ? (
-                    <>
-                        <Loader2 className="animate-spin" size={18} /> Uploading Image...
-                    </>
-                 ) : (
-                    <>
-                        <Send size={18} /> Send to WhatsApp
-                    </>
-                 )}
+                 {isUploading ? <><Loader2 className="animate-spin" size={20} /> Uploading...</> : <><Send size={20} /> Agree & Send via WhatsApp</>}
                </button>
             </form>
 
