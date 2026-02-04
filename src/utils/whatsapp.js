@@ -2,7 +2,7 @@
 const WHATSAPP_NUMBER = "201280140268"
 
 export const createWhatsAppLink = (productDetails, customerName, notes) => {
-  const message = `Hello, I want to order ${productDetails.title}... Name: ${customerName}... Notes: ${notes || "No special notes"}... I will send the photo now.`
+  const message = `Hello, I want to order ${productDetails.title}... Name: ${customerName}... Notes: ${notes || "No special notes"}`
 
   const encodedMessage = encodeURIComponent(message)
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`
