@@ -231,7 +231,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                        <Type size={16} /> Text / Date on Item
+                        <Type size={16} /> Quote / Date on Item
                     </label>
                     <input 
                         type="text" 
