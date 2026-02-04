@@ -37,7 +37,7 @@ const Footer = () => {
             <h3 className="text-lg font-bold text-gray-800 mb-6">Quick Links</h3>
             <ul className="space-y-3 text-sm text-gray-600">
               <li><a href="/About" className="hover:text-primary transition-colors">About Us</a></li>
-              <li><Link to="/Shop" className="hover:text-primary transition-colors">Shop All</Link></li>
+              <li><a to="/Shop" className="hover:text-primary transition-colors">Shop All</a></li>
             </ul>
           </div>
 
@@ -68,9 +68,13 @@ const Footer = () => {
             © 2026 Henawy's Art. All rights reserved.
           </p>
           
-          <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
+<div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
             <span>Built with support from</span>
-            <Link to="/developer" className="text-primary font-bold hover:underline flex items-center gap-1">
+            <Link 
+              to="/developer" 
+              onClick={() => window.scrollTo(0, 0)} // 👈 ضيف السطر ده
+              className="text-primary font-bold hover:underline flex items-center gap-1"
+            >
                Arsany zika <Heart size={14} className="fill-current" />
             </Link>
           </div>
