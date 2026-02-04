@@ -88,9 +88,9 @@ const Developer = () => {
                <p className="text-gray-600 mb-6 font-light">
                  Need a website that captures hearts? I build custom applications that are as unique as your fingerprint.
                </p>
-               <Link to="/contact" className="inline-flex items-center gap-2 text-primary font-bold hover:underline underline-offset-4">
+               {/* <Link to="/contact" className="inline-flex items-center gap-2 text-primary font-bold hover:underline underline-offset-4">
                   Start a Project <ArrowRight size={18} />
-               </Link>
+               </Link> */}
             </div>
             
             {/* رسم بياني بسيط بشكل فني */}
