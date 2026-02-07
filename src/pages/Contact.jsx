@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Phone, Mail, MapPin, MessageCircle, Send, Lightbulb } from 'lucide-react' // 👈 ضفنا ايقونة Lightbulb
+import { Phone, Mail, MapPin, MessageCircle, Send, Lightbulb } from 'lucide-react'
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 
@@ -9,7 +9,7 @@ const Contact = () => {
     email: '',
     message: ''
   })
-  const [isSubmitting, setIsSubmitting] = useState(false) // حالة التحميل
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleInputChange = (e) => {
     setFormData({
@@ -18,10 +18,9 @@ const Contact = () => {
     })
   }
 
-  // 👇 دالة الإرسال الجديدة المربوطة بجوجل شيت
   const handleSubmit = (e) => {
     e.preventDefault()
-    setIsSubmitting(true) // شغل التحميل
+    setIsSubmitting(true)
 
     // رابط السكربت الخاص بيك
     const scriptUrl = "https://script.google.com/macros/s/AKfycbyRWDQCx84CvibacnOH3muymwTZlyYr2CJD0_GWq_q1Trm0O1Dr9Ozz4aGF4asHRuEO/exec"
@@ -32,19 +31,21 @@ const Contact = () => {
     formDatab.append('Email', formData.email)
     formDatab.append('Message', formData.message)
 
-    fetch(scriptUrl, { method: 'POST', body: formDatab })
-      .then(response => {
-          // 👇 رسالة التأكيد الجديدة اللي طلبتها
-          alert('شكراً جداً ليك! ❤️\nرأيك ورسالتك وصلوا، وهتساعدنا جداً نطور الموقع ونحسن خدماتنا.')
-          
-          setFormData({ name: '', email: '', message: '' }) // فضي الخانات
-          setIsSubmitting(false) // وقف التحميل
-      })
-      .catch(error => {
-          console.error('Error!', error.message)
-          alert('حصلت مشكلة صغيرة، ممكن تحاول تاني؟')
-          setIsSubmitting(false)
-      })
+    fetch(scriptUrl, { 
+        method: 'POST', 
+        body: formDatab,
+        mode: 'no-cors' // 👈 السطر ده هو اللي بيحل مشكلة الايرور
+    })
+    .then(() => {
+        alert('شكراً جداً ليك! ❤️\nرأيك ورسالتك وصلوا، وهتساعدنا جداً نطور الموقع ونحسن خدماتنا.')
+        setFormData({ name: '', email: '', message: '' }) 
+        setIsSubmitting(false) 
+    })
+    .catch(error => {
+        console.error('Error!', error.message)
+        alert('حصلت مشكلة صغيرة في الاتصال، تأكد من الانترنت وحاول تاني.')
+        setIsSubmitting(false)
+    })
   }
 
   const contactInfo = [
@@ -159,7 +160,6 @@ const Contact = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="bg-white rounded-2xl shadow-lg p-8 border border-primary/10"
             >
-              {/* 👇 غيرنا العنوان هنا عشان يناسب التطوير */}
               <div className="flex items-center gap-3 mb-6">
                  <Lightbulb className="text-accent w-8 h-8" />
                  <h3 className="text-2xl font-script text-text">
@@ -221,7 +221,7 @@ const Contact = () => {
 
                 <motion.button
                   type="submit"
-                  disabled={isSubmitting} // ممنوع يضغط مرتين وهو بيحمل
+                  disabled={isSubmitting}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`w-full text-white font-semibold py-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark'}`}
