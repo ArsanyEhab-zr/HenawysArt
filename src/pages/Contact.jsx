@@ -23,7 +23,7 @@ const Contact = () => {
     setIsSubmitting(true)
 
     // رابط السكربت الخاص بيك
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbyRWDQCx84CvibacnOH3muymwTZlyYr2CJD0_GWq_q1Trm0O1Dr9Ozz4aGF4asHRuEO/exec"
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbzY425g8er4tmJTEpxd4hnY338qhu7vP1qrRgDTlV1SGpcUBCz3uoRWDjf0aX0xbx7p/exec"
     
     // تجهيز البيانات
     const formDatab = new FormData()
