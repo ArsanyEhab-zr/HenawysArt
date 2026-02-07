@@ -6,13 +6,28 @@ import { supabase } from '../supabaseClient'
 const ProductCard = ({ product, onOrderClick }) => {
   
   // 🧹 دالة تنظيف الروابط (الإصدار النهائي)
-// 🧪 كود الاختبار (صور خارجية شغالة 100%)
   const getImages = () => {
-    return [
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500",
-      "https://images.unsplash.com/photo-1529139574466-a302c2d461bc?w=500", 
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=500"
-    ];
+    if (!product.images) return [];
+    
+    let imageList = [];
+
+    // 1. استخراج الروابط
+    if (Array.isArray(product.images)) {
+      imageList = product.images; // حتى لو المصفوفة فيها مسافات، هناخدها هنا
+    } else if (typeof product.images === 'string') {
+      try {
+        let cleanStr = product.images.replace(/{/g, '[').replace(/}/g, ']');
+        imageList = JSON.parse(cleanStr);
+      } catch (e) {
+        imageList = product.images.replace(/["'{}\[\]]/g, '').split(',');
+      }
+    }
+
+    // 2. التنظيف العميق (Deep Cleaning) 🧼
+    // السطر ده هو اللي هيحل مشكلة المسافة اللي شفناها في الكونسول
+    return imageList
+      .map(url => url.trim()) // 👈 دي اللي هتشيل المسافة الزيادة
+      .filter(url => url.length > 10 && !url.includes('null')); // تأكد إن الرابط حقيقي
   };
 
   const displayImages = getImages();
