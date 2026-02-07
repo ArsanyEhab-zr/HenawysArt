@@ -4,25 +4,41 @@ import ImageSlider from './ImageSlider'
 import { supabase } from '../supabaseClient'
 
 const ProductCard = ({ product, onOrderClick }) => {
-  // 1. تحديد حالة المنتج (هل هو متاح ولا خلص؟)
+  // 1. تصليح مشكلة الـ Array (Parsing Logic) 🛠️
+  // الكود ده بيضمن إن الصور تتقري صح سواء جاية نص أو قائمة
+  let displayImages = [];
+  
+  if (product.images) {
+    if (Array.isArray(product.images)) {
+      // لو هي أصلاً قائمة، تمام
+      displayImages = product.images;
+    } else if (typeof product.images === 'string') {
+      // لو جاية "نص"، هنحولها لقائمة
+      try {
+        // بنحاول ننضف النص من الأقواس الغريبة لو موجودة (زي بتوع Postgres)
+        const cleanString = product.images.replace(/{/g, '[').replace(/}/g, ']');
+        displayImages = JSON.parse(cleanString);
+      } catch (e) {
+        console.error("Error parsing images:", e);
+        displayImages = [];
+      }
+    }
+  }
+
+  // 2. تحديد حالة المنتج
   const isSoldOut = product.stock <= 0
 
-  // 2. دالة التعامل مع الطلب
+  // 3. دالة الطلب
   const handleOrder = async () => {
     if (isSoldOut) return; 
-
     onOrderClick(product);
-
     try {
       const { error } = await supabase
         .from('products')
         .update({ stock: product.stock - 1 })
         .eq('id', product.id)
-      
       if (error) console.error('Error updating stock:', error)
-    } catch (err) {
-      console.error(err)
-    }
+    } catch (err) { console.error(err) }
   }
 
   return (
@@ -36,8 +52,7 @@ const ProductCard = ({ product, onOrderClick }) => {
         isSoldOut ? 'opacity-90' : 'hover:shadow-xl'
       }`}
     >
-      
-      {/* Image Area */}
+      {/* منطقة الصور */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden group">
         
         {/* Sold Out Overlay */}
@@ -49,12 +64,13 @@ const ProductCard = ({ product, onOrderClick }) => {
           </div>
         )}
 
-        {/* Images */}
+        {/* عرض الصور باستخدام المتغير الجديد displayImages */}
         <div className={isSoldOut ? "filter grayscale brightness-50 pointer-events-none" : ""}>
-            {product.images && product.images.length > 0 ? (
-              <ImageSlider images={product.images} />
+            {displayImages && displayImages.length > 0 ? (
+              <ImageSlider images={displayImages} />
             ) : (
               <>
+                {/* Fallback للصورة الفردية القديمة */}
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -73,45 +89,36 @@ const ProductCard = ({ product, onOrderClick }) => {
         </div>
       </div>
 
-      {/* Content */}
+      {/* المحتوى */}
       <div className="p-6">
-        
-        {/* Title */}
         <div className="flex justify-between items-start mb-2">
             <h3 className="text-2xl font-script text-gray-800">{product.title}</h3>
         </div>
 
-        {/* 👇👇👇 هنا التعديل الجديد: عرض المخزون بالتفصيل 👇👇👇 */}
+        {/* عرض الاستوك */}
         {!isSoldOut && (
             <div className={`flex items-center gap-2 mb-3 text-sm font-bold px-3 py-1.5 rounded-full w-fit border transition-colors duration-300
                 ${product.stock <= 5 
-                    ? 'bg-red-50 text-red-600 border-red-100'   // أحمر لو 5 أو أقل
-                    : 'bg-green-50 text-green-700 border-green-100' // أخضر لو أكتر من 5
+                    ? 'bg-red-50 text-red-600 border-red-100'
+                    : 'bg-green-50 text-green-700 border-green-100'
                 }`}>
-                
-                {/* النقطة الملونة */}
                 <span className={`w-2 h-2 rounded-full ${product.stock <= 5 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></span>
-                
-                {/* الرقم */}
                 {product.stock} {product.stock === 1 ? 'Piece' : 'Pieces'} Available
             </div>
         )}
 
-        {/* Description */}
         {product.description && (
           <p className="text-sm text-gray-500 mb-4 line-clamp-2">
             {product.description}
           </p>
         )}
 
-        {/* Price */}
         <div className="flex items-center justify-between mb-4">
           <span className={`text-xl font-semibold ${isSoldOut ? 'text-gray-400 line-through' : 'text-primary'}`}>
             {product.price} EGP
           </span>
         </div>
 
-        {/* Button */}
         <motion.button
           onClick={handleOrder}
           disabled={isSoldOut}
@@ -124,13 +131,9 @@ const ProductCard = ({ product, onOrderClick }) => {
             }`}
         >
           {isSoldOut ? (
-            <>
-                <AlertCircle size={18} /> Unavailable
-            </>
+            <> <AlertCircle size={18} /> Unavailable </>
           ) : (
-            <>
-                <Palette size={18} /> Order Custom Piece
-            </>
+            <> <Palette size={18} /> Order Custom Piece </>
           )}
         </motion.button>
       </div>
