@@ -5,36 +5,33 @@ import { supabase } from '../supabaseClient'
 
 const ProductCard = ({ product, onOrderClick }) => {
   
-  // 🧹 دالة تنظيف الروابط (الإصدار النهائي)
+  // 🧹 دالة تنظيف الروابط (الإصدار النهائي المضمون)
   const getImages = () => {
     if (!product.images) return [];
     
     let imageList = [];
 
-    // 1. استخراج الروابط
+    // 1. استخراج الروابط سواء كانت مصفوفة أو نص
     if (Array.isArray(product.images)) {
-      imageList = product.images; // حتى لو المصفوفة فيها مسافات، هناخدها هنا
+      imageList = product.images;
     } else if (typeof product.images === 'string') {
       try {
+        // تنظيف أقواس Postgres والـ JSON
         let cleanStr = product.images.replace(/{/g, '[').replace(/}/g, ']');
         imageList = JSON.parse(cleanStr);
       } catch (e) {
+        // لو فشل التحويل، افصل بالفاصلة
         imageList = product.images.replace(/["'{}\[\]]/g, '').split(',');
       }
     }
 
-    // 2. التنظيف العميق (Deep Cleaning) 🧼
-    // السطر ده هو اللي هيحل مشكلة المسافة اللي شفناها في الكونسول
+    // 2. التنظيف العميق 🧼
     return imageList
-      .map(url => url.trim()) // 👈 دي اللي هتشيل المسافة الزيادة
-      .filter(url => url.length > 10 && !url.includes('null')); // تأكد إن الرابط حقيقي
+      .map(url => url.trim()) // شيل المسافات
+      .filter(url => url.length > 10 && !url.includes('null') && url.startsWith('http')); // تأكد إنه رابط حقيقي
   };
 
   const displayImages = getImages();
-  
-  // ⚠️ تنبيه: صورة slobet.jpeg مش موجودة في الـ Storage عندك
-  // عشان كدا الكود هيفلترها ومش هتظهر، بس باقي الصور هتظهر عادي.
-
   const isSoldOut = product.stock <= 0;
 
   // دالة التعامل مع الطلب
@@ -61,6 +58,7 @@ const ProductCard = ({ product, onOrderClick }) => {
         isSoldOut ? 'opacity-90' : 'hover:shadow-xl'
       }`}
     >
+      {/* 🖼️ حاوية الصور الرئيسية */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden group">
         
         {isSoldOut && (
@@ -71,12 +69,13 @@ const ProductCard = ({ product, onOrderClick }) => {
           </div>
         )}
 
-        {/* عرض الصور */}
-        <div className={isSoldOut ? "filter grayscale brightness-50 pointer-events-none" : ""}>
+        {/* 👇👇 التعديل السحري هنا 👇👇 */}
+        {/* ضفت w-full h-full عشان الـ div ياخد مساحة الكونتينر وميخليش الصور تختفي */}
+        <div className={`w-full h-full ${isSoldOut ? "filter grayscale brightness-50 pointer-events-none" : ""}`}>
             {displayImages.length > 0 ? (
               <ImageSlider images={displayImages} />
             ) : (
-              /* Fallback */
+              /* Fallback: لو مفيش صور في المصفوفة، اعرض الصورة الفردية */
               <>
                 {product.image_url ? (
                   <img
@@ -86,6 +85,8 @@ const ProductCard = ({ product, onOrderClick }) => {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : null}
+                
+                {/* خلفية احتياطية لو كل الصور فشلت */}
                 <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
                   <span className="text-gray-400 text-sm text-center px-4">
                     {product.title}<br/><span className="text-xs">Image coming soon</span>
