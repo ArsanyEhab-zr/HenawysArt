@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Phone, Mail, MapPin, MessageCircle, Send } from 'lucide-react'
+import { Phone, Mail, MapPin, MessageCircle, Send, Lightbulb } from 'lucide-react' // 👈 ضفنا ايقونة Lightbulb
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 
@@ -9,6 +9,7 @@ const Contact = () => {
     email: '',
     message: ''
   })
+  const [isSubmitting, setIsSubmitting] = useState(false) // حالة التحميل
 
   const handleInputChange = (e) => {
     setFormData({
@@ -17,11 +18,33 @@ const Contact = () => {
     })
   }
 
+  // 👇 دالة الإرسال الجديدة المربوطة بجوجل شيت
   const handleSubmit = (e) => {
     e.preventDefault()
-    // For now, just show an alert - in a real app this would send to a backend
-    alert('Thank you for your message! We will get back to you soon.')
-    setFormData({ name: '', email: '', message: '' })
+    setIsSubmitting(true) // شغل التحميل
+
+    // رابط السكربت الخاص بيك
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyRWDQCx84CvibacnOH3muymwTZlyYr2CJD0_GWq_q1Trm0O1Dr9Ozz4aGF4asHRuEO/exec"
+    
+    // تجهيز البيانات
+    const formDatab = new FormData()
+    formDatab.append('Name', formData.name)
+    formDatab.append('Email', formData.email)
+    formDatab.append('Message', formData.message)
+
+    fetch(scriptUrl, { method: 'POST', body: formDatab })
+      .then(response => {
+          // 👇 رسالة التأكيد الجديدة اللي طلبتها
+          alert('شكراً جداً ليك! ❤️\nرأيك ورسالتك وصلوا، وهتساعدنا جداً نطور الموقع ونحسن خدماتنا.')
+          
+          setFormData({ name: '', email: '', message: '' }) // فضي الخانات
+          setIsSubmitting(false) // وقف التحميل
+      })
+      .catch(error => {
+          console.error('Error!', error.message)
+          alert('حصلت مشكلة صغيرة، ممكن تحاول تاني؟')
+          setIsSubmitting(false)
+      })
   }
 
   const contactInfo = [
@@ -68,8 +91,7 @@ const Contact = () => {
               Get in Touch
             </h1>
             <p className="text-xl text-text-light max-w-3xl mx-auto leading-relaxed">
-              Ready to create something special? We'd love to hear from you.
-              Let's bring your memories to life through art.
+              We value your feedback! Help us improve Henawy's Art.
             </p>
           </motion.div>
         </div>
@@ -79,6 +101,7 @@ const Contact = () => {
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            
             {/* Contact Information */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -92,8 +115,8 @@ const Contact = () => {
                   Let's Create Together
                 </h2>
                 <p className="text-text-light leading-relaxed mb-8">
-                  Whether you have a specific vision or need guidance in choosing the perfect piece,
-                  we're here to help. Reach out to us through any of the channels below.
+                  Whether you have a specific vision, a question, or a suggestion to improve our website,
+                  we're here to listen.
                 </p>
               </div>
 
@@ -128,17 +151,24 @@ const Contact = () => {
               </div>
             </motion.div>
 
-            {/* Contact Form */}
+            {/* Contact / Feedback Form */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-lg p-8"
+              className="bg-white rounded-2xl shadow-lg p-8 border border-primary/10"
             >
-              <h3 className="text-2xl font-script text-text mb-6">
-                Send us a Message
-              </h3>
+              {/* 👇 غيرنا العنوان هنا عشان يناسب التطوير */}
+              <div className="flex items-center gap-3 mb-6">
+                 <Lightbulb className="text-accent w-8 h-8" />
+                 <h3 className="text-2xl font-script text-text">
+                   Help Us Improve
+                 </h3>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">
+                Have a suggestion for the website? Found a bug? Or just want to say hi? Write to us below!
+              </p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -153,7 +183,7 @@ const Contact = () => {
                     onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
-                    placeholder="Enter your full name"
+                    placeholder="Enter your name"
                   />
                 </div>
 
@@ -175,7 +205,7 @@ const Contact = () => {
 
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-text mb-2">
-                    Message
+                    Your Feedback / Message
                   </label>
                   <textarea
                     id="message"
@@ -185,18 +215,24 @@ const Contact = () => {
                     required
                     rows={6}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-none"
-                    placeholder="Tell us about your project or ask any questions..."
+                    placeholder="Tell us what you think or how we can improve..."
                   />
                 </div>
 
                 <motion.button
                   type="submit"
+                  disabled={isSubmitting} // ممنوع يضغط مرتين وهو بيحمل
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-primary text-white font-semibold py-4 rounded-lg hover:bg-primary-dark transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg"
+                  className={`w-full text-white font-semibold py-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark'}`}
                 >
-                  <Send size={18} />
-                  Send Message
+                  {isSubmitting ? (
+                    "Sending..."
+                  ) : (
+                    <>
+                      <Send size={18} /> Send Feedback
+                    </>
+                  )}
                 </motion.button>
               </form>
             </motion.div>
@@ -217,7 +253,7 @@ const Contact = () => {
               Ready to Start Your Custom Piece?
             </h2>
             <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
-              Let's discuss your vision and create something truly special together.
+              Let's discuss your vision directly on WhatsApp.
             </p>
             <motion.a
               href="https://wa.me/201280140268"
