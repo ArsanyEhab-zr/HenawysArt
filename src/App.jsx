@@ -20,6 +20,7 @@ function App() {
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/:category" element={<CategoryPage />} />
             <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
             
             {/* 👇 2. ضيف السطر ده عشان صفحة المطور تفتح */}
             <Route path="/developer" element={<Developer />} />
