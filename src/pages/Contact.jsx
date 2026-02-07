@@ -18,32 +18,33 @@ const Contact = () => {
     })
   }
 
-  const handleSubmit = (e) => {
+ const handleSubmit = (e) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // رابط السكربت الخاص بيك
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzY425g8er4tmJTEpxd4hnY338qhu7vP1qrRgDTlV1SGpcUBCz3uoRWDjf0aX0xbx7p/exec"
+    // 👇 حط الرابط الجديد اللي لسه ناسخه حالا هنا
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwlXLx7LcNjp2F850skBK55Fn52hu3EJHNd-8q3-woeR6M9GVIK16-lff8Ba_EFC3Oy/exec"
     
-    // تجهيز البيانات
+    // تجهيز البيانات (لاحظ الحروف الكابيتال عشان تطابق الشيت)
     const formDatab = new FormData()
-    formDatab.append('Name', formData.name)
-    formDatab.append('Email', formData.email)
-    formDatab.append('Message', formData.message)
+    formDatab.append('Date', new Date().toLocaleString()) // ضفنا التاريخ
+    formDatab.append('Name', formData.name)       // ✅ Name كابيتال
+    formDatab.append('Email', formData.email)     // ✅ Email كابيتال
+    formDatab.append('Message', formData.message) // ✅ Message كابيتال
 
     fetch(scriptUrl, { 
         method: 'POST', 
         body: formDatab,
-        mode: 'no-cors' // 👈 السطر ده هو اللي بيحل مشكلة الايرور
+        mode: 'no-cors'
     })
     .then(() => {
-        alert('شكراً جداً ليك! ❤️\nرأيك ورسالتك وصلوا، وهتساعدنا جداً نطور الموقع ونحسن خدماتنا.')
+        alert('تم الإرسال بنجاح! شكراً لرأيك ❤️')
         setFormData({ name: '', email: '', message: '' }) 
         setIsSubmitting(false) 
     })
     .catch(error => {
         console.error('Error!', error.message)
-        alert('حصلت مشكلة صغيرة في الاتصال، تأكد من الانترنت وحاول تاني.')
+        alert('تأكد من الرابط الجديد وصلاحيات الـ Anyone')
         setIsSubmitting(false)
     })
   }
