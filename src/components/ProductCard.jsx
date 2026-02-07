@@ -4,31 +4,43 @@ import ImageSlider from './ImageSlider'
 import { supabase } from '../supabaseClient'
 
 const ProductCard = ({ product, onOrderClick }) => {
-  // 1. تصليح مشكلة الـ Array (Parsing Logic) 🛠️
-  // الكود ده بيضمن إن الصور تتقري صح سواء جاية نص أو قائمة
-  let displayImages = [];
   
-  if (product.images) {
+  // 🛠️ دالة قوية لتحويل أي نص لـ مصفوفة صور
+  const getImages = () => {
+    if (!product.images) return [];
+    
+    // 1. لو هي مصفوفة جاهزة، رجعها فوراً
     if (Array.isArray(product.images)) {
-      // لو هي أصلاً قائمة، تمام
-      displayImages = product.images;
-    } else if (typeof product.images === 'string') {
-      // لو جاية "نص"، هنحولها لقائمة
+      return product.images;
+    }
+
+    // 2. لو نص، حاول تنظفه وتحوله
+    if (typeof product.images === 'string') {
       try {
-        // بنحاول ننضف النص من الأقواس الغريبة لو موجودة (زي بتوع Postgres)
-        const cleanString = product.images.replace(/{/g, '[').replace(/}/g, ']');
-        displayImages = JSON.parse(cleanString);
+        // تنظيف النص من علامات Postgres الغريبة زي { } واستبدالها بـ [ ]
+        let cleanStr = product.images.replace(/{/g, '[').replace(/}/g, ']');
+        // تنظيف علامات التنصيص المزدوجة الزيادة لو موجودة
+        if (cleanStr.startsWith('"') && cleanStr.endsWith('"')) {
+            cleanStr = cleanStr.slice(1, -1);
+        }
+        // محاولة التحويل لـ JSON
+        return JSON.parse(cleanStr);
       } catch (e) {
-        console.error("Error parsing images:", e);
-        displayImages = [];
+        console.error("فشل تحويل الصور للمنتج:", product.title, e);
+        // محاولة أخيرة: لو الفاصلة هي اللي عاملة مشكلة، نفصل النص يدوياً
+        if (product.images.includes(',')) {
+            return product.images.split(',').map(url => url.replace(/["'{}]/g, '').trim());
+        }
+        return [];
       }
     }
-  }
+    return [];
+  };
 
-  // 2. تحديد حالة المنتج
-  const isSoldOut = product.stock <= 0
+  const displayImages = getImages();
+  const isSoldOut = product.stock <= 0;
 
-  // 3. دالة الطلب
+  // دالة الطلب
   const handleOrder = async () => {
     if (isSoldOut) return; 
     onOrderClick(product);
@@ -41,15 +53,6 @@ const ProductCard = ({ product, onOrderClick }) => {
     } catch (err) { console.error(err) }
   }
 
-  const ProductCard = ({ product, onOrderClick }) => {
-  // 👇 ضيف السطرين دول عشان نشوف الداتا جاية شكلها إيه بالظبط
-  console.log("اسم المنتج:", product.title);
-  console.log("شكل الصور:", product.images);
-  console.log("نوع البيانات:", typeof product.images);
-  }
-
-  // ... باقي الكود ...
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -61,10 +64,8 @@ const ProductCard = ({ product, onOrderClick }) => {
         isSoldOut ? 'opacity-90' : 'hover:shadow-xl'
       }`}
     >
-      {/* منطقة الصور */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden group">
         
-        {/* Sold Out Overlay */}
         {isSoldOut && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
             <div className="bg-red-600 text-white px-8 py-2 rotate-[-15deg] font-bold text-xl shadow-lg border-2 border-white/20 tracking-wider">
@@ -73,13 +74,13 @@ const ProductCard = ({ product, onOrderClick }) => {
           </div>
         )}
 
-        {/* عرض الصور باستخدام المتغير الجديد displayImages */}
+        {/* 👇👇 هنا بنستخدم المصفوفة النظيفة displayImages 👇👇 */}
         <div className={isSoldOut ? "filter grayscale brightness-50 pointer-events-none" : ""}>
-            {displayImages && displayImages.length > 0 ? (
+            {displayImages.length > 0 ? (
               <ImageSlider images={displayImages} />
             ) : (
+              /* Fallback (لو مفيش صور في المصفوفة، اعرض الصورة الفردية) */
               <>
-                {/* Fallback للصورة الفردية القديمة */}
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -98,13 +99,11 @@ const ProductCard = ({ product, onOrderClick }) => {
         </div>
       </div>
 
-      {/* المحتوى */}
       <div className="p-6">
         <div className="flex justify-between items-start mb-2">
             <h3 className="text-2xl font-script text-gray-800">{product.title}</h3>
         </div>
 
-        {/* عرض الاستوك */}
         {!isSoldOut && (
             <div className={`flex items-center gap-2 mb-3 text-sm font-bold px-3 py-1.5 rounded-full w-fit border transition-colors duration-300
                 ${product.stock <= 5 
