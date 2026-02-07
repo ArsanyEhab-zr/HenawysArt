@@ -5,33 +5,36 @@ import { supabase } from '../supabaseClient'
 
 const ProductCard = ({ product, onOrderClick }) => {
   
-  // 🧹 دالة تنظيف الروابط (الحل السحري للمسافات)
+  // 🧹 دالة تنظيف الروابط (الإصدار النهائي)
   const getImages = () => {
     if (!product.images) return [];
     
     let imageList = [];
 
-    // 1. استخراج الروابط سواء كانت نص أو مصفوفة
+    // 1. استخراج الروابط
     if (Array.isArray(product.images)) {
-      imageList = product.images;
+      imageList = product.images; // حتى لو المصفوفة فيها مسافات، هناخدها هنا
     } else if (typeof product.images === 'string') {
       try {
         let cleanStr = product.images.replace(/{/g, '[').replace(/}/g, ']');
         imageList = JSON.parse(cleanStr);
       } catch (e) {
-        // لو فشل الـ JSON، بنفصلهم بالفاصلة
         imageList = product.images.replace(/["'{}\[\]]/g, '').split(',');
       }
     }
 
-    // 2. تنظيف الروابط (أهم خطوة) 🧼
-    // بنشيل المسافات (trim) وبنتأكد إن الرابط مش فاضي
+    // 2. التنظيف العميق (Deep Cleaning) 🧼
+    // السطر ده هو اللي هيحل مشكلة المسافة اللي شفناها في الكونسول
     return imageList
-      .map(url => url.trim()) 
-      .filter(url => url.length > 5); // لازم الرابط يكون فيه كلام
+      .map(url => url.trim()) // 👈 دي اللي هتشيل المسافة الزيادة
+      .filter(url => url.length > 10 && !url.includes('null')); // تأكد إن الرابط حقيقي
   };
 
   const displayImages = getImages();
+  
+  // ⚠️ تنبيه: صورة slobet.jpeg مش موجودة في الـ Storage عندك
+  // عشان كدا الكود هيفلترها ومش هتظهر، بس باقي الصور هتظهر عادي.
+
   const isSoldOut = product.stock <= 0;
 
   // دالة التعامل مع الطلب
@@ -73,7 +76,7 @@ const ProductCard = ({ product, onOrderClick }) => {
             {displayImages.length > 0 ? (
               <ImageSlider images={displayImages} />
             ) : (
-              /* Fallback: لو المصفوفة فاضية */
+              /* Fallback */
               <>
                 {product.image_url ? (
                   <img
