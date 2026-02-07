@@ -5,47 +5,36 @@ import { supabase } from '../supabaseClient'
 
 const ProductCard = ({ product, onOrderClick }) => {
   
-  // 🔍 دالة فك شفرة الصور (محسنة جداً)
+  // 🧹 دالة تنظيف الروابط (الحل السحري للمسافات)
   const getImages = () => {
-    // 1. اطبع الداتا عشان نشوفها بعيننا في الكونسول
-    console.log(`Product: ${product.title}`, product.images, typeof product.images);
-
     if (!product.images) return [];
     
-    // الحالة 1: لو هي جاية مصفوفة جاهزة (وده الطبيعي في Supabase)
-    if (Array.isArray(product.images)) {
-      return product.images;
-    }
+    let imageList = [];
 
-    // الحالة 2: لو جاية نص، نحاول نفكه بكل الطرق الممكنة
-    if (typeof product.images === 'string') {
+    // 1. استخراج الروابط سواء كانت نص أو مصفوفة
+    if (Array.isArray(product.images)) {
+      imageList = product.images;
+    } else if (typeof product.images === 'string') {
       try {
-        let cleanStr = product.images;
-        
-        // لو نص بيبدأ بـ { (صيغة Postgres) نستبدلها بـ [
-        if (cleanStr.startsWith('{')) {
-            cleanStr = cleanStr.replace(/{/g, '[').replace(/}/g, ']');
-        }
-        
-        // محاولة التحويل لـ JSON
-        const parsed = JSON.parse(cleanStr);
-        
-        // التأكد إن النتيجة مصفوفة
-        if (Array.isArray(parsed)) return parsed;
-        
+        let cleanStr = product.images.replace(/{/g, '[').replace(/}/g, ']');
+        imageList = JSON.parse(cleanStr);
       } catch (e) {
-        console.warn("Parsing failed, trying manual split:", e);
-        // محاولة يدوية لو الـ JSON فشل
-        return product.images.replace(/["'{}\[\]]/g, '').split(',').map(s => s.trim()).filter(Boolean);
+        // لو فشل الـ JSON، بنفصلهم بالفاصلة
+        imageList = product.images.replace(/["'{}\[\]]/g, '').split(',');
       }
     }
-    return [];
+
+    // 2. تنظيف الروابط (أهم خطوة) 🧼
+    // بنشيل المسافات (trim) وبنتأكد إن الرابط مش فاضي
+    return imageList
+      .map(url => url.trim()) 
+      .filter(url => url.length > 5); // لازم الرابط يكون فيه كلام
   };
 
   const displayImages = getImages();
   const isSoldOut = product.stock <= 0;
 
-  // دالة الطلب
+  // دالة التعامل مع الطلب
   const handleOrder = async () => {
     if (isSoldOut) return; 
     onOrderClick(product);
@@ -84,7 +73,7 @@ const ProductCard = ({ product, onOrderClick }) => {
             {displayImages.length > 0 ? (
               <ImageSlider images={displayImages} />
             ) : (
-              /* Fallback: لو مفيش صور في المصفوفة، جرب image_url القديم */
+              /* Fallback: لو المصفوفة فاضية */
               <>
                 {product.image_url ? (
                   <img
@@ -105,7 +94,9 @@ const ProductCard = ({ product, onOrderClick }) => {
       </div>
 
       <div className="p-6">
-        <h3 className="text-2xl font-script text-gray-800 mb-2">{product.title}</h3>
+        <div className="flex justify-between items-start mb-2">
+            <h3 className="text-2xl font-script text-gray-800">{product.title}</h3>
+        </div>
 
         {!isSoldOut && (
             <div className={`flex items-center gap-2 mb-3 text-sm font-bold px-3 py-1.5 rounded-full w-fit border transition-colors duration-300
@@ -136,7 +127,10 @@ const ProductCard = ({ product, onOrderClick }) => {
           whileHover={!isSoldOut ? { scale: 1.02 } : {}}
           whileTap={!isSoldOut ? { scale: 0.98 } : {}}
           className={`w-full font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 
-            ${isSoldOut ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-accent text-gray-800 hover:bg-yellow-400'}`}
+            ${isSoldOut 
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                : 'bg-accent text-gray-800 hover:bg-yellow-400'
+            }`}
         >
           {isSoldOut ? (<><AlertCircle size={18} /> Unavailable</>) : (<><Palette size={18} /> Order Custom Piece</>)}
         </motion.button>
