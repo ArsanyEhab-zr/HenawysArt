@@ -41,6 +41,15 @@ const ProductCard = ({ product, onOrderClick }) => {
     } catch (err) { console.error(err) }
   }
 
+  const ProductCard = ({ product, onOrderClick }) => {
+  // 👇 ضيف السطرين دول عشان نشوف الداتا جاية شكلها إيه بالظبط
+  console.log("اسم المنتج:", product.title);
+  console.log("شكل الصور:", product.images);
+  console.log("نوع البيانات:", typeof product.images);
+  }
+
+  // ... باقي الكود ...
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
