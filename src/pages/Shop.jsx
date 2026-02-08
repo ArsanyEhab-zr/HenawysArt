@@ -18,9 +18,14 @@ const Shop = () => {
       setLoading(true)
 
       // 1. هنجيب الأقسام من الجدول الجديد مباشرة (أسرع وأنظف)
+      // الكود القديم كان كدة:
+      // .select('*')
+
+      // 👇 الكود الجديد (هتزود حتة order دي):
       const { data: categoriesData, error } = await supabase
         .from('categories')
         .select('*')
+        .order('sort_order', { ascending: true }) // 👈 ده السر كله
 
       if (error) throw error
 
