@@ -69,7 +69,6 @@ const ProductCard = ({ product, onOrderClick }) => {
           </div>
         )}
 
-        {/* 👇👇 التعديل السحري هنا 👇👇 */}
         {/* ضفت w-full h-full عشان الـ div ياخد مساحة الكونتينر وميخليش الصور تختفي */}
         <div className={`w-full h-full ${isSoldOut ? "filter grayscale brightness-50 pointer-events-none" : ""}`}>
             {displayImages.length > 0 ? (
@@ -119,11 +118,27 @@ const ProductCard = ({ product, onOrderClick }) => {
           </p>
         )}
 
-        <div className="flex items-center justify-between mb-4">
-          <span className={`text-xl font-semibold ${isSoldOut ? 'text-gray-400 line-through' : 'text-primary'}`}>
-            {product.price} EGP
-          </span>
+        {/* 👇👇 التعديل الجديد: السعر بيبدأ من 👇👇 */}
+        <div className="flex items-end gap-2 mb-4">
+            {/* لو الخاصية متفعلة في الداتا بيز، اكتب Starts from */}
+            {product.is_starting_price && (
+                <span className="text-sm text-gray-500 font-medium mb-1">
+                Starts from
+                </span>
+            )}
+
+            <span className={`text-xl font-semibold ${isSoldOut ? 'text-gray-400 line-through' : 'text-primary'}`}>
+                {product.price} EGP
+            </span>
+
+            {/* بادج صغير يوضح إن السعر حسب المقاس */}
+            {product.is_starting_price && !isSoldOut && (
+                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-auto">
+                Depends on size
+                </span>
+            )}
         </div>
+        {/* 👆👆 نهاية التعديل 👆👆 */}
 
         <motion.button
           onClick={handleOrder}
