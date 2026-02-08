@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
 
-// 1. قائمة المحافظات المفصلة عشان حساب الشحن
+// 1. قائمة المحافظات
 const GOVERNORATES_LIST = [
   "Cairo", "Giza",
   "Alexandria (Center)", "Alexandria (Agami)", "Alexandria (Borg El Arab)",
@@ -17,19 +17,11 @@ const GOVERNORATES_LIST = [
 // 2. دالة حساب الشحن
 const getShippingFee = (gov) => {
   if (!gov) return 0
-
-  // الإسكندرية ومناطقها
   if (gov === "Alexandria (Center)") return 50
   if (gov === "Alexandria (Agami)") return 55
   if (gov === "Alexandria (Borg El Arab)") return 60
-
-  // القاهرة والجيزة
   if (gov === "Cairo" || gov === "Giza") return 80
-
-  // مدن القناة + الدلتا (90)
   if (["Port Said", "Ismailia", "Suez", "Dakahlia", "Beheira", "Gharbiya", "Monufia", "Qalyubia", "Damietta", "Sharkia", "Kafr El Sheikh"].includes(gov)) return 90
-
-  // مدن الصعيد والباقي (100)
   return 100
 }
 
@@ -51,7 +43,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // حساب الشحن المباشر
   const shippingFee = getShippingFee(governorate)
 
   useEffect(() => {
@@ -99,6 +90,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
+  // 👇👇👇 التعديل الجوهري هنا 👇👇👇
   const handleGetLocation = () => {
     setIsLocating(true)
     if (!navigator.geolocation) {
@@ -106,12 +98,31 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setIsLocating(false)
       return
     }
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => { // 1. خليناها async عشان هنكلم سيرفر الخرائط
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-        const mapsUrl = `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}`
+
+        // لينك جوجل مابس (عشان يتبعت في الواتس للدقة)
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`
         setLocationLink(mapsUrl)
+
+        // 2. محاولة تحويل الإحداثيات لاسم شارع (Reverse Geocoding)
+        try {
+          // بنستخدم خدمة OpenStreetMap المجانية
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
+          const data = await response.json()
+
+          if (data && data.display_name) {
+            // 3. بنكتب العنوان في الخانة أوتوماتيك
+            setAddress(data.display_name)
+          }
+        } catch (error) {
+          console.error("Could not fetch address text", error)
+          // لو فشل يجيب الاسم (بسبب نت مثلاً)، مش مشكلة، اللينك لسه معانا
+        }
+
         setIsLocating(false)
       },
       (error) => {
@@ -125,14 +136,12 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const calculateProductTotal = () => {
     if (!product) return 0
     let total = Number(product.price)
-
     const coupleAddon = Object.values(selections).find(a => a.operation_type === 'percent_double_discount')
     if (coupleAddon) {
       const doublePrice = total * 2
       const discountValue = doublePrice * (Number(coupleAddon.value) / 100)
       total = doublePrice - discountValue
     }
-
     Object.values(selections).forEach(addon => {
       if (addon.operation_type === 'percent_double_discount') return
       if (addon.operation_type === 'fixed') total += Number(addon.value)
@@ -180,7 +189,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
-    if (locationLink) detailsString += `🌍 GPS: ${locationLink}\n`
+    if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n` // بنبعت اللينك برضه عشان السواق يوصل دغري
 
     if (customText) detailsString += `✍️ Text/Date: "${customText}"\n`
     if (bgColor) detailsString += `🎨 Bg Color: ${bgColor}\n`
@@ -200,7 +209,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       detailsString += `\n💵 Product Price: ${productPrice} EGP`;
     }
 
-    // إضافة الشحن والإجمالي للرسالة
     detailsString += `\n🚚 Shipping: ${shippingFee} EGP`;
     if (!product.is_starting_price) {
       detailsString += `\n💰 Total Required: ${grandTotal} EGP`;
@@ -224,7 +232,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
               <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
               <h2 className="text-2xl font-script font-bold">Customize Order</h2>
 
-              {/* عرض السعر + الشحن في الهيدر */}
               <div className="flex flex-col mt-3">
                 {product.is_starting_price ? (
                   <span className="text-xl font-bold text-accent">Agreement via WhatsApp</span>
@@ -277,7 +284,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* 3. Custom Text/Color */}
+              {/* 3. Custom Text */}
               <div className="grid grid-cols-1 gap-4">
                 <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Quote / Date..." className="w-full px-4 py-3 border rounded-lg" />
                 <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Background Color..." className="w-full px-4 py-3 border rounded-lg" />
@@ -285,14 +292,13 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               <hr className="border-gray-100" />
 
-              {/* 4. Location & Name (الجزء المهم) */}
+              {/* 4. Location & Name */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border rounded-lg" required />
                 </div>
 
-                {/* المحافظة وحساب الشحن */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Calculates Shipping) *
@@ -312,21 +318,28 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   </select>
                 </div>
 
-                {/* العنوان والـ GPS */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="flex items-center gap-2 text-sm font-medium text-text"><Home size={16} /> Detailed Address *</label>
-                    <button type="button" onClick={handleGetLocation} disabled={isLocating || locationLink} className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Locating...</> : locationLink ? <><Check size={12} /> Set</> : <><Navigation size={12} /> GPS</>}
+                    <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
+                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Locating...</> : locationLink ? <><Check size={12} /> Updated</> : <><Navigation size={12} /> Use Current Location</>}
                     </button>
                   </div>
-                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-lg resize-none ${locationLink ? 'border-green-500' : ''}`} placeholder="Street Name, Building No, Floor..." required />
+                  {/* هنا الـ textarea هتتملي أوتوماتيك لما الـ address يتغير */}
+                  <textarea
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    rows={2}
+                    className={`w-full px-4 py-3 border rounded-lg resize-none ${locationLink ? 'border-green-500' : ''}`}
+                    placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."}
+                    required
+                  />
                 </div>
 
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border rounded-lg resize-none" placeholder="Notes..." />
               </div>
 
-              {/* 5. Important Notices Box (الجزء اللي انت طلبته زي ما هو بالظبط) */}
+              {/* 5. Important Notices Box */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="bg-blue-100 p-2 rounded-full">
