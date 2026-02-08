@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
 
-// 1. تحديث قائمة المحافظات لتشمل مناطق الإسكندرية
+// 1. قائمة المحافظات المفصلة عشان حساب الشحن
 const GOVERNORATES_LIST = [
   "Cairo", "Giza",
   "Alexandria (Center)", "Alexandria (Agami)", "Alexandria (Borg El Arab)",
@@ -26,16 +26,10 @@ const getShippingFee = (gov) => {
   // القاهرة والجيزة
   if (gov === "Cairo" || gov === "Giza") return 80
 
-  // مدن القناة (90)
-  if (["Port Said", "Ismailia", "Suez"].includes(gov)) return 90
+  // مدن القناة + الدلتا (90)
+  if (["Port Said", "Ismailia", "Suez", "Dakahlia", "Beheira", "Gharbiya", "Monufia", "Qalyubia", "Damietta", "Sharkia", "Kafr El Sheikh"].includes(gov)) return 90
 
-  // محافظات الدلتا (90)
-  if (["Dakahlia", "Beheira", "Gharbiya", "Monufia", "Qalyubia", "Damietta", "Sharkia", "Kafr El Sheikh"].includes(gov)) return 90
-
-  // مدن الصعيد (100)
-  if (["Fayoum", "Minya", "Assiut", "Beni Suef", "Luxor", "Qena", "Sohag", "Aswan"].includes(gov)) return 100
-
-  // المحافظات الحدودية والبعيدة (نحسبها 100 مبدئياً زي الصعيد أو حسب رغبتك)
+  // مدن الصعيد والباقي (100)
   return 100
 }
 
@@ -57,7 +51,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // متغير لحفظ سعر الشحن الحالي
+  // حساب الشحن المباشر
   const shippingFee = getShippingFee(governorate)
 
   useEffect(() => {
@@ -132,7 +126,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     if (!product) return 0
     let total = Number(product.price)
 
-    // منطق الـ Double Discount (Couple)
     const coupleAddon = Object.values(selections).find(a => a.operation_type === 'percent_double_discount')
     if (coupleAddon) {
       const doublePrice = total * 2
@@ -155,7 +148,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const grandTotal = productPrice + shippingFee
 
   const uploadImage = async (file) => {
-    // ... (نفس كود رفع الصور القديم)
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}.${fileExt}`
@@ -196,7 +188,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     const selectedList = Object.values(selections)
     if (selectedList.length > 0) {
       selectedList.forEach(addon => {
-        // ... (format addons)
         detailsString += `• ${addon.title}\n`
       })
     }
@@ -209,7 +200,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       detailsString += `\n💵 Product Price: ${productPrice} EGP`;
     }
 
-    // إضافة الشحن للرسالة
+    // إضافة الشحن والإجمالي للرسالة
     detailsString += `\n🚚 Shipping: ${shippingFee} EGP`;
     if (!product.is_starting_price) {
       detailsString += `\n💰 Total Required: ${grandTotal} EGP`;
@@ -243,7 +234,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   </div>
                 )}
 
-                {/* تفصيلة السعر الصغير تحت */}
                 {!product.is_starting_price && (
                   <div className="text-xs text-white/80 flex items-center gap-1 mt-1">
                     <span>Item: {productPrice}</span>
@@ -256,7 +246,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-              {/* 1. Addons & Uploads (نفس الكود السابق) */}
+              {/* 1. Addons */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 {loadingAddons ? <Loader2 className="animate-spin mx-auto" /> : availableAddons.map(addon => {
                   const isSelected = !!selections[addon.id]
@@ -276,6 +266,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 })}
               </div>
 
+              {/* 2. Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-text mb-2">Ref Image (Optional)</label>
                 <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
@@ -286,6 +277,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
+              {/* 3. Custom Text/Color */}
               <div className="grid grid-cols-1 gap-4">
                 <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Quote / Date..." className="w-full px-4 py-3 border rounded-lg" />
                 <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Background Color..." className="w-full px-4 py-3 border rounded-lg" />
@@ -300,6 +292,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border rounded-lg" required />
                 </div>
 
+                {/* المحافظة وحساب الشحن */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Calculates Shipping) *
@@ -319,6 +312,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   </select>
                 </div>
 
+                {/* العنوان والـ GPS */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="flex items-center gap-2 text-sm font-medium text-text"><Home size={16} /> Detailed Address *</label>
@@ -332,16 +326,31 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border rounded-lg resize-none" placeholder="Notes..." />
               </div>
 
-              {/* Notices & Submit */}
+              {/* 5. Important Notices Box (الجزء اللي انت طلبته زي ما هو بالظبط) */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                {/* ... (نفس النوتس) ... */}
                 <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 p-2 rounded-full"><AlertCircle className="text-blue-600" size={20} /></div>
-                  <div><h4 className="text-sm font-bold text-blue-800">Delivery Time</h4><p className="text-xs text-blue-700">10-14 days.</p></div>
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <AlertCircle className="text-blue-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-800">Delivery Time</h4>
+                    <p className="text-xs text-blue-700 mt-1">Order takes <span className="font-bold">10 to 14 days</span> to be ready.</p>
+                  </div>
                 </div>
-                <div className="flex items-start gap-3 pt-2 border-t border-blue-200">
-                  <div className="bg-blue-100 p-2 rounded-full"><Wallet className="text-blue-600" size={20} /></div>
-                  <div><h4 className="text-sm font-bold text-blue-800">Payment</h4><p className="text-xs text-blue-700">50% Deposit via Wallet.</p></div>
+
+                <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Wallet className="text-blue-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-800">Payment Policy</h4>
+                    <p className="text-xs text-blue-700 mt-1">
+                      <span className="font-bold">50% Deposit</span> required via Wallet on same WhatsApp number.
+                    </p>
+                    <p className="text-[10px] text-red-500 font-bold mt-1 uppercase">
+                      🚫 No Instapay
+                    </p>
+                  </div>
                 </div>
               </div>
 
