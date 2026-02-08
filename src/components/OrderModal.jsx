@@ -68,6 +68,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
+  // حساب السعر (للمنتجات العادية فقط)
   const calculateTotal = () => {
     if (!product) return 0
     let finalTotal = 0
@@ -137,7 +138,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         }
     }
 
-    // 2. 🆕 تسجيل المبيعات (عشان Top Sellers يشتغل)
+    // 2. تسجيل المبيعات
     try {
         const { error } = await supabase
             .rpc('increment_sold_count', { product_id: product.id })
@@ -166,7 +167,14 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     if (uploadedImageUrl) detailsString += `\n🖼️ Ref Image: ${uploadedImageUrl}\n`
 
-    detailsString += `\n💵 Final Price: ${finalPrice} EGP`
+    // 👇👇👇 التعديل هنا: تحديد طريقة كتابة السعر 👇👇👇
+    if (product.is_starting_price) {
+        detailsString += `\n💵 Price: To be agreed upon (Starts from ${product.price} EGP)`;
+        detailsString += `\nℹ️ Final price depends on design size & details.`;
+    } else {
+        detailsString += `\n💵 Final Price: ${finalPrice} EGP`;
+    }
+
     detailsString += `\n⚠️ Client aware of: 10-14 days delivery & 50% Wallet Deposit (No Instapay).`
     
     openWhatsAppChat(product, customerName, notes + detailsString)
@@ -180,17 +188,29 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             
+            {/* Header Section */}
             <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white relative">
                 <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
                 <h2 className="text-2xl font-script font-bold">Customize Order</h2>
+                
+                {/* 👇👇👇 التعديل هنا: عرض السعر في الهيدر 👇👇👇 */}
                 <div className="flex items-end gap-2 mt-2">
-                    <span className="text-3xl font-bold text-accent">{finalPrice} EGP</span>
-                    {finalPrice !== Number(product.price) && (
-                         <span className="text-sm text-white/70 line-through mb-1">
-                             {selections[Object.keys(selections).find(k => selections[k].operation_type === 'percent_double_discount')] 
-                                ? Number(product.price) * 2 
-                                : product.price} EGP
-                         </span>
+                    {product.is_starting_price ? (
+                        <div className="flex flex-col">
+                            <span className="text-xl font-bold text-accent">Agreement via WhatsApp</span>
+                            <span className="text-xs text-white/80">Base price starts from {product.price} EGP</span>
+                        </div>
+                    ) : (
+                        <>
+                            <span className="text-3xl font-bold text-accent">{finalPrice} EGP</span>
+                            {finalPrice !== Number(product.price) && (
+                                <span className="text-sm text-white/70 line-through mb-1">
+                                    {selections[Object.keys(selections).find(k => selections[k].operation_type === 'percent_double_discount')] 
+                                        ? Number(product.price) * 2 
+                                        : product.price} EGP
+                                </span>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -240,31 +260,31 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
                {/* 3. Customization Fields */}
                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                        <Type size={16} /> Quote / Date on Item
-                    </label>
-                    <input 
-                        type="text" 
-                        value={customText}
-                        onChange={e => setCustomText(e.target.value)}
-                        placeholder="E.g., 12/5/2025 or 'Happy Birthday'"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                  </div>
+                 <div>
+                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                       <Type size={16} /> Quote / Date on Item
+                   </label>
+                   <input 
+                       type="text" 
+                       value={customText}
+                       onChange={e => setCustomText(e.target.value)}
+                       placeholder="E.g., 12/5/2025 or 'Happy Birthday'"
+                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                   />
+                 </div>
 
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                        <Palette size={16} /> Background Color
-                    </label>
-                    <input 
-                        type="text" 
-                        value={bgColor}
-                        onChange={e => setBgColor(e.target.value)}
-                        placeholder="E.g., Navy Blue, Black, Pastel Pink..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                  </div>
+                 <div>
+                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                       <Palette size={16} /> Background Color
+                   </label>
+                   <input 
+                       type="text" 
+                       value={bgColor}
+                       onChange={e => setBgColor(e.target.value)}
+                       placeholder="E.g., Navy Blue, Black, Pastel Pink..."
+                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                   />
+                 </div>
                </div>
 
                <hr className="border-gray-100" />
