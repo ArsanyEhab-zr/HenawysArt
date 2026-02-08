@@ -7,6 +7,7 @@ import CategoryPage from './pages/CategoryPage'
 import About from './pages/About'
 import Contact from './pages/Contact' // 👈 1. لازم تضيف السطر ده!
 import Developer from './pages/Developer'
+import Policies from './pages/Policies' // استدعاء الصفحة
 
 function App() {
   return (
@@ -26,6 +27,8 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             
             <Route path="/developer" element={<Developer />} />
+    
+            <Route path="/policies" element={<Policies />} />
           </Routes>
         </div>
 
