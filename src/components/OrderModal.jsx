@@ -35,6 +35,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
+  const [gpsError, setGpsError] = useState('') // عشان لو معرفناش نحدد المحافظة
 
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
@@ -57,6 +58,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setNotes('')
       setLocationLink('')
       setIsLocating(false)
+      setGpsError('')
     }
   }, [product, isOpen])
 
@@ -90,9 +92,69 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // 👇👇👇 التعديل الجوهري هنا 👇👇👇
+  // 👇👇👇 الذكاء الاصطناعي لتحديد المحافظة 👇👇👇
+  const autoSelectGovernorate = (addressObj) => {
+    if (!addressObj) return;
+
+    // بنحول كل الكلام لحروف صغيرة عشان المقارنة
+    const state = (addressObj.state || '').toLowerCase();
+    const city = (addressObj.city || addressObj.town || '').toLowerCase();
+    const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase();
+    const county = (addressObj.county || '').toLowerCase();
+
+    let detectedGov = '';
+
+    // 1. حالات الإسكندرية الخاصة
+    if (state.includes('alexandria') || city.includes('alexandria')) {
+      if (suburb.includes('agami') || city.includes('agami') || suburb.includes('dekheila')) {
+        detectedGov = "Alexandria (Agami)";
+      } else if (city.includes('borg') || suburb.includes('borg')) {
+        detectedGov = "Alexandria (Borg El Arab)";
+      } else {
+        detectedGov = "Alexandria (Center)";
+      }
+    }
+    // 2. القاهرة والجيزة
+    else if (state.includes('cairo') || city.includes('cairo')) detectedGov = "Cairo";
+    else if (state.includes('giza') || city.includes('giza')) detectedGov = "Giza";
+
+    // 3. باقي المحافظات (بحث بالكلمة المفتاحية)
+    else if (state.includes('dakahlia') || city.includes('mansoura')) detectedGov = "Dakahlia";
+    else if (state.includes('beheira') || city.includes('damanhur')) detectedGov = "Beheira";
+    else if (state.includes('fayoum')) detectedGov = "Fayoum";
+    else if (state.includes('gharbiya') || city.includes('tanta')) detectedGov = "Gharbiya";
+    else if (state.includes('ismailia')) detectedGov = "Ismailia";
+    else if (state.includes('monufia') || city.includes('shibin')) detectedGov = "Monufia";
+    else if (state.includes('minya')) detectedGov = "Minya";
+    else if (state.includes('qalyubia') || city.includes('banha') || city.includes('shoubra')) detectedGov = "Qalyubia";
+    else if (state.includes('suez')) detectedGov = "Suez";
+    else if (state.includes('aswan')) detectedGov = "Aswan";
+    else if (state.includes('assiut')) detectedGov = "Assiut";
+    else if (state.includes('beni suef')) detectedGov = "Beni Suef";
+    else if (state.includes('port said')) detectedGov = "Port Said";
+    else if (state.includes('damietta')) detectedGov = "Damietta";
+    else if (state.includes('sharkia') || city.includes('zagazig')) detectedGov = "Sharkia";
+    else if (state.includes('sinai')) detectedGov = state.includes('south') ? "South Sinai" : "North Sinai";
+    else if (state.includes('kafr') || city.includes('kafr')) detectedGov = "Kafr El Sheikh";
+    else if (state.includes('matrouh')) detectedGov = "Matrouh";
+    else if (state.includes('luxor')) detectedGov = "Luxor";
+    else if (state.includes('qena')) detectedGov = "Qena";
+    else if (state.includes('sohag')) detectedGov = "Sohag";
+    else if (state.includes('red sea') || city.includes('hurghada')) detectedGov = "Red Sea";
+
+    // لو لقينا تطابق، نحدث الولاية
+    if (detectedGov) {
+      setGovernorate(detectedGov);
+      setGpsError(''); // مسح أي خطأ قديم
+    } else {
+      setGpsError('Could not auto-detect city. Please select manually.');
+    }
+  }
+
   const handleGetLocation = () => {
     setIsLocating(true)
+    setGpsError('') // Reset error
+
     if (!navigator.geolocation) {
       alert("Geolocation is not supported")
       setIsLocating(false)
@@ -100,27 +162,26 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => { // 1. خليناها async عشان هنكلم سيرفر الخرائط
+      async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-
-        // لينك جوجل مابس (عشان يتبعت في الواتس للدقة)
-        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`
+        const mapsUrl = `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}`
         setLocationLink(mapsUrl)
 
-        // 2. محاولة تحويل الإحداثيات لاسم شارع (Reverse Geocoding)
         try {
-          // بنستخدم خدمة OpenStreetMap المجانية
+          // طلب البيانات باللغة الإنجليزية عشان تطابق القائمة بتاعتنا
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
           const data = await response.json()
 
           if (data && data.display_name) {
-            // 3. بنكتب العنوان في الخانة أوتوماتيك
             setAddress(data.display_name)
+            // 👇 تشغيل دالة التعرف التلقائي على المحافظة
+            if (data.address) {
+              autoSelectGovernorate(data.address);
+            }
           }
         } catch (error) {
           console.error("Could not fetch address text", error)
-          // لو فشل يجيب الاسم (بسبب نت مثلاً)، مش مشكلة، اللينك لسه معانا
         }
 
         setIsLocating(false)
@@ -189,7 +250,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
-    if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n` // بنبعت اللينك برضه عشان السواق يوصل دغري
+    if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n`
 
     if (customText) detailsString += `✍️ Text/Date: "${customText}"\n`
     if (bgColor) detailsString += `🎨 Bg Color: ${bgColor}\n`
@@ -299,14 +360,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border rounded-lg" required />
                 </div>
 
+                {/* المحافظة + زرار الـ GPS */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <MapPin size={16} /> Governorate (Calculates Shipping) *
+                    <MapPin size={16} /> Governorate (Shipping Fee) *
                   </label>
                   <select
                     value={governorate}
                     onChange={e => setGovernorate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white"
+                    className={`w-full px-4 py-3 border border-gray-200 rounded-lg bg-white transition-all ${gpsError ? 'border-yellow-400' : ''}`}
                     required
                   >
                     <option value="">Select Governorate</option>
@@ -316,16 +378,16 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                       </option>
                     ))}
                   </select>
+                  {gpsError && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="flex items-center gap-2 text-sm font-medium text-text"><Home size={16} /> Detailed Address *</label>
                     <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Locating...</> : locationLink ? <><Check size={12} /> Updated</> : <><Navigation size={12} /> Use Current Location</>}
+                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Auto-Detecting City...</> : locationLink ? <><Check size={12} /> City Detected</> : <><Navigation size={12} /> Detect My City & Address</>}
                     </button>
                   </div>
-                  {/* هنا الـ textarea هتتملي أوتوماتيك لما الـ address يتغير */}
                   <textarea
                     value={address}
                     onChange={e => setAddress(e.target.value)}
