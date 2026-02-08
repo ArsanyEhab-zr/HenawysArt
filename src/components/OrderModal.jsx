@@ -35,7 +35,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
-  const [gpsError, setGpsError] = useState('') // عشان لو معرفناش نحدد المحافظة
+  const [gpsError, setGpsError] = useState('')
 
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
@@ -92,19 +92,14 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // 👇👇👇 الذكاء الاصطناعي لتحديد المحافظة 👇👇👇
   const autoSelectGovernorate = (addressObj) => {
     if (!addressObj) return;
-
-    // بنحول كل الكلام لحروف صغيرة عشان المقارنة
     const state = (addressObj.state || '').toLowerCase();
     const city = (addressObj.city || addressObj.town || '').toLowerCase();
     const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase();
-    const county = (addressObj.county || '').toLowerCase();
 
     let detectedGov = '';
 
-    // 1. حالات الإسكندرية الخاصة
     if (state.includes('alexandria') || city.includes('alexandria')) {
       if (suburb.includes('agami') || city.includes('agami') || suburb.includes('dekheila')) {
         detectedGov = "Alexandria (Agami)";
@@ -114,11 +109,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         detectedGov = "Alexandria (Center)";
       }
     }
-    // 2. القاهرة والجيزة
     else if (state.includes('cairo') || city.includes('cairo')) detectedGov = "Cairo";
     else if (state.includes('giza') || city.includes('giza')) detectedGov = "Giza";
-
-    // 3. باقي المحافظات (بحث بالكلمة المفتاحية)
     else if (state.includes('dakahlia') || city.includes('mansoura')) detectedGov = "Dakahlia";
     else if (state.includes('beheira') || city.includes('damanhur')) detectedGov = "Beheira";
     else if (state.includes('fayoum')) detectedGov = "Fayoum";
@@ -142,10 +134,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     else if (state.includes('sohag')) detectedGov = "Sohag";
     else if (state.includes('red sea') || city.includes('hurghada')) detectedGov = "Red Sea";
 
-    // لو لقينا تطابق، نحدث الولاية
     if (detectedGov) {
       setGovernorate(detectedGov);
-      setGpsError(''); // مسح أي خطأ قديم
+      setGpsError('');
     } else {
       setGpsError('Could not auto-detect city. Please select manually.');
     }
@@ -153,37 +144,26 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const handleGetLocation = () => {
     setIsLocating(true)
-    setGpsError('') // Reset error
-
+    setGpsError('')
     if (!navigator.geolocation) {
       alert("Geolocation is not supported")
       setIsLocating(false)
       return
     }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
         const mapsUrl = `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}`
         setLocationLink(mapsUrl)
-
         try {
-          // طلب البيانات باللغة الإنجليزية عشان تطابق القائمة بتاعتنا
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
           const data = await response.json()
-
           if (data && data.display_name) {
             setAddress(data.display_name)
-            // 👇 تشغيل دالة التعرف التلقائي على المحافظة
-            if (data.address) {
-              autoSelectGovernorate(data.address);
-            }
+            if (data.address) autoSelectGovernorate(data.address);
           }
-        } catch (error) {
-          console.error("Could not fetch address text", error)
-        }
-
+        } catch (error) { console.error("Could not fetch address text", error) }
         setIsLocating(false)
       },
       (error) => {
@@ -243,9 +223,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (!uploadedImageUrl) { setIsUploading(false); return }
     }
 
-    try {
-      await supabase.rpc('increment_sold_count', { product_id: product.id })
-    } catch (err) { }
+    try { await supabase.rpc('increment_sold_count', { product_id: product.id }) } catch (err) { }
 
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
@@ -257,9 +235,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     const selectedList = Object.values(selections)
     if (selectedList.length > 0) {
-      selectedList.forEach(addon => {
-        detailsString += `• ${addon.title}\n`
-      })
+      selectedList.forEach(addon => { detailsString += `• ${addon.title}\n` })
     }
 
     if (uploadedImageUrl) detailsString += `\n🖼️ Ref Image: ${uploadedImageUrl}\n`
@@ -292,7 +268,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
             <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white relative">
               <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
               <h2 className="text-2xl font-script font-bold">Customize Order</h2>
-
               <div className="flex flex-col mt-3">
                 {product.is_starting_price ? (
                   <span className="text-xl font-bold text-accent">Agreement via WhatsApp</span>
@@ -301,7 +276,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <span className="text-3xl font-bold text-accent">{grandTotal} <span className="text-lg">EGP</span></span>
                   </div>
                 )}
-
                 {!product.is_starting_price && (
                   <div className="text-xs text-white/80 flex items-center gap-1 mt-1">
                     <span>Item: {productPrice}</span>
@@ -345,10 +319,49 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* 3. Custom Text */}
+              {/* 3. Custom Fields (Restored & Upgraded with Color Picker) */}
               <div className="grid grid-cols-1 gap-4">
-                <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Quote / Date..." className="w-full px-4 py-3 border rounded-lg" />
-                <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Background Color..." className="w-full px-4 py-3 border rounded-lg" />
+
+                {/* Quote Input */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                    <Type size={16} /> Quote / Date on Item
+                  </label>
+                  <input
+                    type="text"
+                    value={customText}
+                    onChange={e => setCustomText(e.target.value)}
+                    placeholder="E.g., 12/5/2025 or 'Happy Birthday'"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+
+                {/* Background Color Picker */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                    <Palette size={16} /> Background Color
+                  </label>
+                  <div className="flex gap-2">
+                    {/* Color Picker Box */}
+                    <div className="relative overflow-hidden w-14 h-[50px] rounded-lg border border-gray-200 shadow-sm shrink-0 cursor-pointer">
+                      <input
+                        type="color"
+                        value={bgColor.startsWith('#') ? bgColor : '#ffffff'}
+                        onChange={e => setBgColor(e.target.value)}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer"
+                      />
+                    </div>
+                    {/* Text Input */}
+                    <input
+                      type="text"
+                      value={bgColor}
+                      onChange={e => setBgColor(e.target.value)}
+                      placeholder="Pick color or type name (e.g., Navy Blue)..."
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
               </div>
 
               <hr className="border-gray-100" />
@@ -360,7 +373,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border rounded-lg" required />
                 </div>
 
-                {/* المحافظة + زرار الـ GPS */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Shipping Fee) *
