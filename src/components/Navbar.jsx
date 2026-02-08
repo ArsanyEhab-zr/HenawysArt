@@ -17,10 +17,11 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // 👈 قفل القائمة أوتوماتيك لما نغير الصفحة
+  // 👈 قفل القائمة + رفع الصفحة لفوق أوتوماتيك لما نغير المسار
   useEffect(() => {
-    setIsOpen(false)
-  }, [location])
+    setIsOpen(false) // نقفل القائمة
+    window.scrollTo(0, 0) // 👈 السطر ده هو اللي هيطلع الصفحة لأولها
+  }, [location]) // بيشتغل كل ما الـ Location يتغير
 
   const navItems = [
     { path: '/', label: 'Home' },
