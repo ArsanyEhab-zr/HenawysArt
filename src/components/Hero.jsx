@@ -25,7 +25,7 @@ const Hero = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-5xl md:text-7xl lg:text-8xl font-script text-primary mb-8"
           >
-            Timeless on Wood
+            Timeless with Art
           </motion.h2>
 
           {/* Subtitle */}
