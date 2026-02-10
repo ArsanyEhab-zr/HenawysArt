@@ -156,24 +156,21 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }
 
-  // 🔥 1. تصليح منطق الـ Radio Buttons
+  // 🔥 1. تعديل منطق الـ Radio Buttons
   const handleToggleAddon = (addon) => {
     setSelections(prev => {
       const newSelections = { ...prev }
 
       if (addon.ui_type === 'checkbox') {
-        // لو checkbox: يضيف أو يحذف عادي
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
 
       } else if (addon.ui_type === 'radio') {
-        // لو radio: 
         if (newSelections[addon.id]) {
-          // لو هو مختار أصلاً وداس عليه تاني -> الغيه (Toggle off)
+          // لو كان مختار وداس عليه تاني -> يلغيه
           delete newSelections[addon.id]
         } else {
-          // لو مش مختار -> الغي أي راديو تاني واختاره هو
-          // (بيمسح أي حاجة تانية نوعها راديو عشان يضمن اختيار واحد بس)
+          // لو اختار واحد جديد -> يلغي أي راديو تاني ويختار ده
           Object.values(newSelections).forEach(selected => {
             if (selected.ui_type === 'radio') {
               delete newSelections[selected.id]
@@ -186,45 +183,40 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // 🔥 2. تصليح منطق التحديد التلقائي للمحافظة
-  const autoSelectGovernorate = (addressObj) => {
-    // لو مفيش بيانات أو القائمة لسه محملتش، ارجع
-    if (!addressObj || shippingRatesList.length === 0) return;
+  // 🔥 2. تعديل منطق تحديد المحافظة (يبحث في العنوان بالكامل)
+  const autoSelectGovernorate = (addressData) => {
+    if (!addressData || shippingRatesList.length === 0) return;
 
-    // توحيد النصوص للمقارنة (كله حروف صغيرة)
-    const state = (addressObj.state || '').toLowerCase(); // المحافظة من جوجل
-    const city = (addressObj.city || addressObj.town || '').toLowerCase(); // المدينة
-    const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase(); // الحي
+    // بنستخدم العنوان الكامل عشان ندور فيه (زي ما ظهر في الصورة عندك)
+    const fullText = (addressData.display_name || '').toLowerCase();
 
-    // منطق خاص للإسكندرية عشان تقسيماتها
-    if (state.includes('alexandria') || city.includes('alexandria')) {
-      // 1. ندور على العجمي
-      if (suburb.includes('agami') || city.includes('agami')) {
+    // التعامل مع الإسكندرية ومناطقها
+    if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
+      if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
         const agamiRate = shippingRatesList.find(r => r.governorate.includes('Agami'));
         if (agamiRate) { setGovernorate(agamiRate.governorate); setGpsError(''); return; }
       }
-      // 2. ندور على برج العرب
-      if (suburb.includes('borg') || city.includes('borg')) {
+      if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
         const borgRate = shippingRatesList.find(r => r.governorate.includes('Borg'));
         if (borgRate) { setGovernorate(borgRate.governorate); setGpsError(''); return; }
       }
-      // 3. الباقي يبقي Center
+      // الباقي يبقي Center
       const centerRate = shippingRatesList.find(r => r.governorate.includes('Center') && r.governorate.includes('Alexandria'));
       if (centerRate) { setGovernorate(centerRate.governorate); setGpsError(''); return; }
     }
 
-    // منطق لباقي المحافظات (القاهرة، الجيزة، إلخ)
-    // بندور على محافظة في القائمة بتاعتنا يكون اسمها موجود جوه العنوان اللي رجع من جوجل
+    // التعامل مع باقي المحافظات
     const foundRate = shippingRatesList.find(rate => {
-      const govName = rate.governorate.toLowerCase().replace('governorate', '').trim(); // نشيل كلمة governorate من المقارنة
-      return state.includes(govName) || city.includes(govName);
+      // بنشيل كلمة Governorate عشان نقارن الاسم بس
+      const cleanGovName = rate.governorate.toLowerCase().replace('governorate', '').trim();
+      return fullText.includes(cleanGovName);
     });
 
     if (foundRate) {
       setGovernorate(foundRate.governorate);
       setGpsError('');
     } else {
-      setGpsError('Could not auto-match city to our list. Please select manually.');
+      setGpsError('Detected address, but could not match Governorate. Please try again.');
     }
   }
 
@@ -241,14 +233,13 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         setLocationLink(mapsUrl)
 
         try {
-          // بنجيب تفاصيل العنوان من الإحداثيات
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
           const data = await response.json()
 
           if (data && data.display_name) {
             setAddress(data.display_name)
-            // 👇 هنا بنشغل دالة التحديد التلقائي
-            if (data.address) autoSelectGovernorate(data.address);
+            // 👇 تشغيل التحديد التلقائي
+            autoSelectGovernorate(data);
           }
         } catch (error) {
           console.error("Could not fetch address text", error)
@@ -325,7 +316,10 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
-    if (!governorate) { alert('Please select your governorate'); return }
+
+    // 👇 التحقق من المحافظة (لازم تكون اتحددت من الـ GPS)
+    if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
+
     if (!address.trim()) { alert('Please enter detailed address'); return }
 
     if (selectedFile) setIsUploading(true)
@@ -557,7 +551,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               <hr className="border-gray-100" />
 
-              {/* Location & Name */}
+              {/* Location & Name (الجزء المتعدل) */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
@@ -566,16 +560,18 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <MapPin size={16} /> Governorate (Shipping Fee) *
+                    <MapPin size={16} /> Governorate (Auto-Detected) *
                   </label>
+
+                  {/* 👇👇👇 التعديل هنا: الخانة بقت مقفولة (Disabled) وشكلها رمادي 👇👇👇 */}
                   <select
                     value={governorate}
                     onChange={e => setGovernorate(e.target.value)}
-                    className={`w-full px-4 py-3 border border-gray-200 rounded-lg bg-white transition-all ${gpsError ? 'border-yellow-400' : ''}`}
+                    className={`w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed ${gpsError ? 'border-yellow-400' : ''}`}
                     required
-                    disabled={shippingLoading}
+                    disabled={true}
                   >
-                    <option value="">{shippingLoading ? "Loading rates..." : "Select Governorate"}</option>
+                    <option value="">{shippingLoading ? "Loading rates..." : "Use 'Detect My City' Button 👇"}</option>
                     {shippingRatesList.map(rate => (
                       <option key={rate.id} value={rate.governorate}>
                         {rate.governorate} (+{rate.fee} EGP)
@@ -589,7 +585,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <div className="flex justify-between items-center mb-2">
                     <label className="flex items-center gap-2 text-sm font-medium text-text"><Home size={16} /> Detailed Address *</label>
                     <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Auto-Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My City & Address</>}
+                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Auto-Detecting...</> : locationLink ? <><Check size={12} /> City Detected</> : <><Navigation size={12} /> Detect My City & Address</>}
                     </button>
                   </div>
                   <textarea
