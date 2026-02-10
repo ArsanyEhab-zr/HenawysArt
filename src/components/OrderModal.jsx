@@ -36,7 +36,6 @@ const getColorNameFromHex = (hex) => {
 const OrderModal = ({ isOpen, onClose, product }) => {
   // State Variables
   const [customerName, setCustomerName] = useState('')
-  // 👇 State جديدة لرقم الهاتف
   const [phone, setPhone] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [shippingRatesList, setShippingRatesList] = useState([])
@@ -68,7 +67,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // حساب مصاريف الشحن (بيتحدث تلقائي لما المحافظة تتغير)
   const shippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
 
   useEffect(() => {
@@ -86,7 +84,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setGovernorate('')
       setAddress('')
       setNotes('')
-      setPhone('') // 👇 تصفير رقم الهاتف عند الفتح
+      setPhone('')
       setLocationLink('')
       setIsLocating(false)
       setGpsError('')
@@ -126,11 +124,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     finally { setLoadingAddons(false) }
   }
 
-  // 🔥🔥🔥 Coupon Logic (Updated with Phone Check) 🔥🔥🔥
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
 
-    // 1. التحقق من إدخال رقم الهاتف أولاً
     if (!phone.trim() || phone.length < 10) {
       setCouponMsg({ type: 'error', text: 'Please enter a valid phone number first.' })
       return;
@@ -141,7 +137,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     setAppliedCoupon(null)
 
     try {
-      // 2. جلب بيانات الكوبون
       const { data: couponData, error } = await supabase
         .from('coupons')
         .select('*')
@@ -151,29 +146,24 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (error || !couponData) throw new Error("Invalid coupon code")
       if (!couponData.is_active) throw new Error("This coupon is inactive")
 
-      // 3. التحقق من التواريخ
       const now = new Date()
       if (now < new Date(couponData.start_date)) throw new Error("Coupon hasn't started yet")
       if (now > new Date(couponData.end_date)) throw new Error("Coupon has expired")
 
-      // 4. التحقق من الحد الأقصى للاستخدام العام (Global Limit)
-      // (تأكد إنك ضفت الأعمدة دي في الداتابيز: usage_limit و used_count)
       if (couponData.usage_limit && couponData.used_count >= couponData.usage_limit) {
         throw new Error("This coupon has reached its usage limit.")
       }
 
-      // 5. التحقق إن الرقم ده مستخدمش الكوبون ده قبل كدة (Per User Limit)
       const { count } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('phone', phone.trim()) // البحث برقم الهاتف
-        .eq('items->>coupon', couponCode.trim()) // البحث عن الكود داخل الـ JSON
+        .eq('phone', phone.trim())
+        .eq('items->>coupon', couponCode.trim())
 
       if (count > 0) {
         throw new Error("You have already used this coupon code!")
       }
 
-      // 6. نجاح التفعيل
       setAppliedCoupon(couponData)
       setCouponMsg({ type: 'success', text: `Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` })
     } catch (err) {
@@ -184,20 +174,17 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }
 
-  // Radio Buttons Logic (Toggle)
   const handleToggleAddon = (addon) => {
     setSelections(prev => {
       const newSelections = { ...prev }
-
       if (addon.ui_type === 'checkbox') {
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
 
       } else if (addon.ui_type === 'radio') {
         if (newSelections[addon.id]) {
-          delete newSelections[addon.id] // Toggle OFF
+          delete newSelections[addon.id]
         } else {
-          // Remove other radios
           Object.values(newSelections).forEach(selected => {
             if (selected.ui_type === 'radio') {
               delete newSelections[selected.id]
@@ -210,14 +197,12 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // Auto-Detect Logic (Smart Fuzzy Search)
   const autoSelectGovernorate = (addressData) => {
     if (!addressData || shippingRatesList.length === 0) return;
 
     const fullText = (addressData.display_name || '').toLowerCase();
     let detectedGov = '';
 
-    // 1. Alexandria Logic
     if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
       if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
         const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
@@ -238,7 +223,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         }
       }
     }
-    // 2. Other Governorates
     else {
       const foundRate = shippingRatesList.find(rate => {
         const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
@@ -288,7 +272,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     )
   }
 
-  // Price Calculation
   const calculateTotals = () => {
     if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
 
@@ -346,7 +329,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
-    if (!phone.trim()) { alert('Please enter phone number'); return } // 👇 تحقق من الهاتف
+    if (!phone.trim()) { alert('Please enter phone number'); return }
     if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
     if (!address.trim()) { alert('Please enter detailed address'); return }
 
@@ -361,7 +344,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     try {
       const { error: orderError } = await supabase.from('orders').insert([{
         customer_name: customerName,
-        phone: phone, // 👇 حفظ رقم الهاتف في الداتابيز
+        phone: phone,
         governorate: governorate,
         address: address,
         total_price: grandTotal,
@@ -383,7 +366,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
       await supabase.rpc('increment_sold_count', { product_id: product.id })
 
-      // لو فيه كوبون مستخدم، زود العداد بتاعه
       if (appliedCoupon) {
         await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
       }
@@ -393,7 +375,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `👤 Customer: ${customerName}\n`
-    detailsString += `📱 Phone: ${phone}\n` // 👇 إضافة الهاتف للرسالة
+    detailsString += `📱 Phone: ${phone}\n`
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
     if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n`
@@ -433,162 +415,225 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   return (
     <AnimatePresence>
       {isOpen && product && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={e => e.stopPropagation()}
+            // 👇 هنا التعديل: إخفاء السكرول بار باستخدام كلاس خاص وتكبير العرض شوية
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+          >
 
-            {/* Header */}
-            <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white relative">
-              <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
-              <h2 className="text-2xl font-script font-bold">Customize Order</h2>
-              <div className="flex flex-col mt-3">
+            {/* Header Sticky - ثابت في الأعلى */}
+            <div className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-dark p-6 text-white shadow-lg backdrop-blur-md">
+              <button onClick={onClose} className="absolute top-4 right-4 bg-white/20 p-1 rounded-full hover:bg-white/40 transition-all"><X size={20} /></button>
+              <h2 className="text-xl md:text-2xl font-script font-bold">Customize Order</h2>
+
+              <div className="flex flex-col mt-2">
                 {product.is_starting_price ? (
-                  <span className="text-xl font-bold text-accent">Agreement via WhatsApp</span>
+                  <span className="text-lg font-bold text-accent">Discussion via WhatsApp</span>
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-accent">{grandTotal} <span className="text-lg">EGP</span></span>
+                    <span className="text-3xl font-bold text-accent drop-shadow-sm">{grandTotal} <span className="text-lg">EGP</span></span>
                     {appliedCoupon && <span className="text-sm text-white/70 line-through">{grandTotal + discountAmount} EGP</span>}
                   </div>
                 )}
                 {!product.is_starting_price && (
-                  <div className="text-xs text-white/80 flex flex-wrap items-center gap-1 mt-1">
-                    <span>Item: {finalProductPrice}</span>
+                  <div className="text-xs text-white/90 flex flex-wrap items-center gap-2 mt-1 font-medium">
+                    <span className="bg-white/10 px-2 py-0.5 rounded">Item: {finalProductPrice}</span>
                     <span>+</span>
-                    <span className="flex items-center bg-white/20 px-1 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
+                    <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-              {/* Addons */}
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                {loadingAddons ? <Loader2 className="animate-spin mx-auto" /> : availableAddons.map(addon => {
-                  const isSelected = !!selections[addon.id]
-                  let priceTag = ''
-                  if (addon.operation_type === 'fixed') priceTag = `+${addon.value} EGP`
-                  if (addon.operation_type === 'percent_add') priceTag = `+${addon.value}%`
-                  if (addon.operation_type === 'percent_double_discount') priceTag = `${addon.value}% OFF`
-                  return (
-                    <label key={addon.id} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-primary bg-white shadow-sm' : 'border-transparent hover:bg-white'}`}>
-                      <div className="flex items-center gap-3">
-                        <input type={addon.ui_type} checked={isSelected} onChange={() => handleToggleAddon(addon)} className="text-primary focus:ring-primary w-5 h-5" />
-                        <div><p className="font-medium text-gray-800">{addon.title}</p><p className="text-xs text-primary font-bold">{priceTag}</p></div>
+              {/* Addons Grid - شكل الكروت الجديد */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                  <Palette size={16} className="text-primary" /> Customizations
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {loadingAddons ? <div className="col-span-full py-4 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div> : availableAddons.map(addon => {
+                    const isSelected = !!selections[addon.id]
+                    let priceTag = ''
+                    if (addon.operation_type === 'fixed') priceTag = `+${addon.value} EGP`
+                    if (addon.operation_type === 'percent_add') priceTag = `+${addon.value}%`
+                    if (addon.operation_type === 'percent_double_discount') priceTag = `${addon.value}% OFF`
+
+                    return (
+                      <div
+                        key={addon.id}
+                        onClick={() => handleToggleAddon(addon)}
+                        className={`relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer group
+                                ${isSelected
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                            : 'border-gray-100 hover:border-primary/50 hover:shadow-md bg-white'
+                          }`}
+                      >
+                        {/* Checkbox Icon */}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                                ${isSelected ? 'border-primary bg-primary text-white' : 'border-gray-300 group-hover:border-primary/50'}`}>
+                          {isSelected && <Check size={12} strokeWidth={4} />}
+                        </div>
+
+                        <div className="flex-1">
+                          <p className={`font-bold text-sm ${isSelected ? 'text-primary-dark' : 'text-gray-700'}`}>{addon.title}</p>
+                          <p className="text-xs text-primary font-bold mt-0.5">{priceTag}</p>
+                        </div>
+                        {addon.image_url && <img src={addon.image_url} alt="" className="w-10 h-10 rounded-md object-cover border border-gray-100" />}
                       </div>
-                      {addon.image_url && <img src={addon.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
-                    </label>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
 
-              {/* Image Upload */}
+              {/* Image Upload - تصميم جديد */}
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Ref Image (Optional)</label>
-                <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Reference Image (Optional)</label>
+                <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:bg-gray-50 
+                    ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/40'}`}>
                   <input type="file" accept="image/*" className="hidden" id="image-upload" onChange={(e) => setSelectedFile(e.target.files[0])} />
-                  <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                    {selectedFile ? <><ImagePlus className="text-primary" /> <span className="text-sm font-semibold">{selectedFile.name}</span></> : <><Upload className="text-gray-400" /> <span className="text-sm">Click to upload</span></>}
+                  <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-3">
+                    {selectedFile ? (
+                      <>
+                        <div className="bg-primary/10 p-3 rounded-full text-primary"><ImagePlus size={24} /></div>
+                        <span className="text-sm font-semibold text-primary">{selectedFile.name}</span>
+                        <span className="text-xs text-gray-400">Click to change</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="bg-gray-100 p-3 rounded-full text-gray-500"><Upload size={24} /></div>
+                        <span className="text-sm font-medium text-gray-600">Click to upload your photo</span>
+                      </>
+                    )}
                   </label>
                 </div>
               </div>
-
-              {/* Custom Fields */}
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Type size={16} /> Quote / Date on Item</label>
-                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="E.g., 12/5/2025 or 'Happy Birthday'" className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Palette size={16} /> Background Color</label>
-                  <div className="flex gap-2">
-                    <div className="relative overflow-hidden w-14 h-[50px] rounded-lg border border-gray-200 shadow-sm shrink-0 cursor-pointer">
-                      <input type="color" value={pickerHex} onChange={e => { const hex = e.target.value; setPickerHex(hex); setBgColor(getColorNameFromHex(hex)); }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer" />
-                    </div>
-                    <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Pick color or type name..." className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Phone Input (NEW) - قبل الكوبون عشان نعرف نتحقق */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                  <Phone size={16} /> Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="01xxxxxxxxx"
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20"
-                  required
-                />
-              </div>
-
-              {/* Coupons Section */}
-              {!product.is_starting_price && (
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Tag size={16} /> Promo Code</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Enter Code (e.g. SAVE10)" className="flex-1 px-4 py-2 border border-gray-200 rounded-lg uppercase" disabled={!!appliedCoupon} />
-                    {appliedCoupon ?
-                      <button type="button" onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm">Remove</button> :
-                      <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50">{couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}</button>
-                    }
-                  </div>
-                  {couponMsg.text && <p className={`text-xs mt-1 font-medium flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
-                </div>
-              )}
 
               <hr className="border-gray-100" />
 
-              {/* Location & Name */}
+              {/* Text & Color */}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Type size={16} className="text-primary" /> Text on Item</label>
+                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Name, Date, or Quote..." className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Palette size={16} className="text-primary" /> Background Color</label>
+                  <div className="flex gap-2">
+                    <div className="relative overflow-hidden w-14 h-[50px] rounded-xl border border-gray-200 shadow-sm shrink-0 cursor-pointer hover:shadow-md transition-shadow">
+                      <input type="color" value={pickerHex} onChange={e => { const hex = e.target.value; setPickerHex(hex); setBgColor(getColorNameFromHex(hex)); }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer" />
+                    </div>
+                    <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Pick or type color..." className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Phone & Coupon */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                    <Phone size={16} className="text-primary" /> Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="01xxxxxxxxx"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
+                    required
+                  />
+                </div>
+
+                {!product.is_starting_price && (
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Tag size={16} className="text-primary" /> Coupon Code</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="SAVE10" className="flex-1 px-4 py-2 border border-gray-200 rounded-xl uppercase font-medium bg-white outline-none focus:border-primary" disabled={!!appliedCoupon} />
+                      {appliedCoupon ?
+                        <button type="button" onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors">Remove</button> :
+                        <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode} className="bg-gray-800 text-white px-5 py-2 rounded-xl font-bold text-sm disabled:opacity-50 hover:bg-gray-900 transition-colors">{couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}</button>
+                      }
+                    </div>
+                    {couponMsg.text && <p className={`text-xs mt-2 font-bold flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Address Section */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
-                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border rounded-lg" required />
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Full Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none" required />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <MapPin size={16} /> Governorate (Auto-Detected) *
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                    <MapPin size={16} className="text-primary" /> Governorate <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={governorate}
-                    onChange={e => setGovernorate(e.target.value)}
-                    className={`w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed ${gpsError ? 'border-yellow-400' : ''}`}
-                    required
-                    disabled={true}
-                  >
-                    <option value="">{shippingLoading ? "Loading rates..." : "Use 'Detect My City' Button 👇"}</option>
-                    {shippingRatesList.map(rate => (
-                      <option key={rate.id} value={rate.governorate}>
-                        {rate.governorate} (+{rate.fee} EGP)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={governorate}
+                      onChange={e => setGovernorate(e.target.value)}
+                      className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 appearance-none cursor-pointer outline-none focus:border-primary ${gpsError ? 'border-yellow-400' : ''}`}
+                      required
+                      disabled={true}
+                    >
+                      <option value="">{shippingLoading ? "Loading rates..." : "Detected automatically below 👇"}</option>
+                      {shippingRatesList.map(rate => (
+                        <option key={rate.id} value={rate.governorate}>
+                          {rate.governorate} (+{rate.fee} EGP)
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">▼</div>
+                  </div>
                   {gpsError && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="flex items-center gap-2 text-sm font-medium text-text"><Home size={16} /> Detailed Address *</label>
-                    <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Auto-Detecting...</> : locationLink ? <><Check size={12} /> City Detected</> : <><Navigation size={12} /> Detect My City & Address</>}
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address <span className="text-red-500">*</span></label>
+                    <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1 transition-all shadow-sm ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
+                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My Location</>}
                     </button>
                   </div>
-                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-lg resize-none ${locationLink ? 'border-green-500' : ''}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required />
+                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required />
                 </div>
 
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border rounded-lg resize-none" placeholder="Notes..." />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes..." />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                <div className="flex items-start gap-3"><div className="bg-blue-100 p-2 rounded-full"><AlertCircle className="text-blue-600" size={20} /></div><div><h4 className="text-sm font-bold text-blue-800">Delivery Time</h4><p className="text-xs text-blue-700 mt-1">Order takes <span className="font-bold">10 to 14 days</span>.</p></div></div>
-                <div className="flex items-start gap-3 border-t border-blue-200 pt-3"><div className="bg-blue-100 p-2 rounded-full"><Wallet className="text-blue-600" size={20} /></div><div><h4 className="text-sm font-bold text-blue-800">Payment Policy</h4><p className="text-xs text-blue-700 mt-1"><span className="font-bold">50% Deposit</span> via Wallet.</p><p className="text-[10px] text-red-500 font-bold mt-1 uppercase">🚫 No Instapay</p></div></div>
+              {/* Info Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle size={16} className="text-blue-600" />
+                    <span className="text-xs font-bold text-blue-800 uppercase">Delivery</span>
+                  </div>
+                  <p className="text-xs text-blue-700">10-14 Days</p>
+                </div>
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wallet size={16} className="text-purple-600" />
+                    <span className="text-xs font-bold text-purple-800 uppercase">Payment</span>
+                  </div>
+                  <p className="text-xs text-purple-700">50% Deposit (Wallet)</p>
+                </div>
               </div>
 
-              <button type="submit" disabled={isUploading} className={`w-full bg-accent text-text font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg ${isUploading ? 'opacity-70' : ''}`}>
-                {isUploading ? <><Loader2 className="animate-spin" size={20} /> Sending...</> : <><Send size={20} /> Check out via WhatsApp</>}
+              {/* Submit Button */}
+              <button type="submit" disabled={isUploading} className={`w-full bg-accent hover:bg-yellow-400 text-gray-900 font-bold py-4 rounded-xl flex justify-center items-center gap-3 shadow-lg shadow-yellow-500/20 transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}>
+                {isUploading ? <><Loader2 className="animate-spin" size={20} /> Processing...</> : <><Send size={20} /> Checkout on WhatsApp</>}
               </button>
             </form>
           </motion.div>
