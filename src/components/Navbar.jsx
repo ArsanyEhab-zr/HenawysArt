@@ -55,7 +55,7 @@ const Navbar = () => {
               {/* 🖼️ الدائرة الخاصة باللوجو */}
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm">
                 <img
-                  src="/logo.jpg" // 👈 اتأكد إن مسار الصورة صح (نفس اللي في الـ About)
+                  src="public\logo.png" // 👈 اتأكد إن مسار الصورة صح (نفس اللي في الـ About)
                   alt="Henawy's Art Logo"
                   className="w-full h-full object-cover"
                 />
