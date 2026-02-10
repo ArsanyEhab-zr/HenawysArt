@@ -29,7 +29,7 @@ const DashboardHome = () => {
         try {
             setLoading(true)
 
-            // 1. جلب كل الطلبات
+            // 1. جلب كل الطلبات لحساب الإحصائيات
             const { data: allOrders, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
@@ -37,16 +37,16 @@ const DashboardHome = () => {
 
             if (ordersError) throw ordersError
 
-            // 2. جلب أعلى المنتجات مبيعاً
+            // 2. جلب المنتجات
             const { data: products, error: productsError } = await supabase
                 .from('products')
                 .select('*')
                 .order('sold_count', { ascending: false })
-                .limit(5)
+                .limit(5) // هات أعلى 5 منتجات مبيعاً
 
             if (productsError) throw productsError
 
-            // --- 🧠 المنطق الذكي للحسابات ---
+            // --- 🧠 معالجة البيانات (Calculations) ---
 
             let revenue = 0
             let active = 0
@@ -56,21 +56,18 @@ const DashboardHome = () => {
                 const status = order.status; // pending, confirmed, shipped, delivered, cancelled
                 const amount = Number(order.total_price || 0);
 
-                // 1. حساب الريفنيو (الأرباح)
-                // بنحسب الفلوس لو الحالة: مؤكد، أو مشحون، أو تم التوصيل
-                // (Pending مش بنحسبه لسه، و Cancelled مش بنحسبه خالص)
+                // أ. حساب الريفنيو (الأرباح)
+                // بنحسب الفلوس لو الحالة: مؤكد، أو خرج للشحن، أو وصل
                 if (['confirmed', 'shipped', 'delivered'].includes(status)) {
                     revenue += amount;
                 }
 
-                // 2. حساب الطلبات النشطة (Active)
-                // أي طلب لسه شغال (انتظار، مؤكد، أو خرج للشحن)
+                // ب. حساب الطلبات النشطة (لسه مخلصتش)
                 if (['pending', 'confirmed', 'shipped'].includes(status)) {
                     active++;
                 }
 
-                // 3. حساب الطلبات المكتملة (Completed)
-                // اللي وصل للعميل فقط
+                // ج. حساب الطلبات المكتملة (وصلت للعميل)
                 if (status === 'delivered') {
                     completed++;
                 }
@@ -83,8 +80,7 @@ const DashboardHome = () => {
                 totalProducts: products.length
             })
 
-            // --- تجهيز الرسم البياني (Sales Chart) ---
-            // هنا بنعرض المبيعات "المؤكدة" بس في الرسم البياني
+            // --- د. تجهيز الرسم البياني (Sales Chart - Last 7 Days) ---
             const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const d = subDays(new Date(), i)
                 return format(d, 'MMM dd')
@@ -102,6 +98,7 @@ const DashboardHome = () => {
             })
             setSalesData(chartData)
 
+            // هـ. باقي البيانات
             setTopProducts(products)
             setRecentOrders(allOrders.slice(0, 5))
 
@@ -122,7 +119,7 @@ const DashboardHome = () => {
             {/* 1. Header */}
             <div>
                 <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
-                <p className="text-gray-500">Welcome back! Here's your business performance.</p>
+                <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
             </div>
 
             {/* 2. Stats Cards */}
@@ -151,7 +148,7 @@ const DashboardHome = () => {
                 <StatCard
                     title="Top Products"
                     value={stats.totalProducts}
-                    subValue="Best sellers count"
+                    subValue="Items in stock"
                     icon={Package}
                     color="bg-purple-100 text-purple-600"
                 />
@@ -159,9 +156,10 @@ const DashboardHome = () => {
 
             {/* 3. Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
                 {/* Sales Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Revenue Analytics (Confirmed Orders)</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Revenue Analytics (Confirmed)</h3>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={salesData}>
@@ -232,9 +230,8 @@ const DashboardHome = () => {
                                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="p-4 font-medium text-gray-800">{order.customer_name}</td>
                                     <td className="p-4">
-                                        {/* Status Badge Logic */}
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold 
-                      ${order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                                            ${order.status === 'delivered' ? 'bg-green-100 text-green-700' :
                                                 order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
                                                     order.status === 'shipped' ? 'bg-purple-100 text-purple-700' :
                                                         order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
@@ -258,7 +255,7 @@ const DashboardHome = () => {
     )
 }
 
-// Card Component
+// مكون الكارت (StatCard)
 const StatCard = ({ title, value, subValue, icon: Icon, color }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow">
         <div>

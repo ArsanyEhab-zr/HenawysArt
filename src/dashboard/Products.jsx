@@ -22,7 +22,7 @@ const Products = () => {
     const [formData, setFormData] = useState({
         title: '',
         price: '',
-        stock: 0, // 👈 خانة المخزون الجديدة
+        stock: 0,
         category: '',
         description: '',
         image_url: '',
@@ -33,6 +33,31 @@ const Products = () => {
 
     useEffect(() => {
         fetchData()
+
+        // 👇👇👇 إضافة الاستماع اللحظي لتغييرات المخزون 👇👇👇
+        const channel = supabase
+            .channel('realtime-products-list')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'products' },
+                (payload) => {
+                    // لو حصل تعديل (مثلاً المخزون نقص)، نحدث المنتج ده بس في الـ State
+                    if (payload.eventType === 'UPDATE') {
+                        setProducts((prev) => prev.map((product) =>
+                            product.id === payload.new.id ? payload.new : product
+                        ))
+                    }
+                    // لو منتج جديد انضاف أو اتمسح، نعيد تحميل القائمة للأمان
+                    else {
+                        fetchData()
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     const fetchData = async () => {
@@ -75,7 +100,7 @@ const Products = () => {
             setFormData({
                 title: product.title || '',
                 price: product.price || '',
-                stock: product.stock || 0, // 👈 تحميل المخزون الحالي
+                stock: product.stock || 0,
                 category: product.category || defaultCategory,
                 description: product.description || '',
                 image_url: product.image_url || '',
@@ -87,7 +112,7 @@ const Products = () => {
             setFormData({
                 title: '',
                 price: '',
-                stock: 0, // 👈 القيمة الافتراضية
+                stock: 0,
                 category: defaultCategory,
                 description: '',
                 image_url: '',
@@ -144,7 +169,7 @@ const Products = () => {
             const productData = {
                 title: formData.title,
                 price: Number(formData.price),
-                stock: Number(formData.stock), // 👈 حفظ المخزون
+                stock: Number(formData.stock),
                 category: formData.category,
                 description: formData.description,
                 image_url: imageUrl || formData.image_url,
@@ -167,7 +192,7 @@ const Products = () => {
             }
 
             setIsModalOpen(false)
-            fetchData()
+            // fetchData() // مش محتاجين نستدعيها هنا لأن الـ Realtime هيسمع التغيير ويحدث لوحده
 
         } catch (error) {
             console.error(error)
@@ -188,7 +213,7 @@ const Products = () => {
 
             if (error) throw error
 
-            setProducts(products.filter(p => p.id !== id))
+            // setProducts(products.filter(p => p.id !== id)) // الـ Realtime هيقوم بالواجب
             toast.success('Product deleted')
         } catch (error) {
             toast.error('Error deleting product')
@@ -254,7 +279,7 @@ const Products = () => {
                                     onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Error' }}
                                 />
 
-                                {/* Stock Badges (تنبيهات المخزون) */}
+                                {/* Stock Badges */}
                                 {product.stock === 0 ? (
                                     <span className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
                                         <AlertCircle size={10} /> Out of Stock
@@ -335,7 +360,6 @@ const Products = () => {
                                 </div>
                             </div>
 
-                            {/* 👇👇👇 خانة المخزون الجديدة 👇👇👇 */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
