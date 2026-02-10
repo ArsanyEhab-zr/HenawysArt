@@ -29,7 +29,7 @@ const DashboardHome = () => {
         try {
             setLoading(true)
 
-            // 1. جلب كل الطلبات لحساب الإحصائيات
+            // 1. جلب كل الطلبات
             const { data: allOrders, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
@@ -37,52 +37,72 @@ const DashboardHome = () => {
 
             if (ordersError) throw ordersError
 
-            // 2. جلب المنتجات
+            // 2. جلب أعلى المنتجات مبيعاً
             const { data: products, error: productsError } = await supabase
                 .from('products')
                 .select('*')
                 .order('sold_count', { ascending: false })
-                .limit(5) // هات أعلى 5 منتجات مبيعاً
+                .limit(5)
 
             if (productsError) throw productsError
 
-            // --- معالجة البيانات (Calculations) ---
+            // --- 🧠 المنطق الذكي للحسابات ---
 
-            // أ. حساب الأرقام الإجمالية
-            const revenue = allOrders
-                .filter(o => o.status === 'completed')
-                .reduce((sum, order) => sum + Number(order.total_price || 0), 0)
+            let revenue = 0
+            let active = 0
+            let completed = 0
 
-            const pending = allOrders.filter(o => o.status === 'pending' || o.status === 'processing').length
-            const completed = allOrders.filter(o => o.status === 'completed').length
+            allOrders.forEach(order => {
+                const status = order.status; // pending, confirmed, shipped, delivered, cancelled
+                const amount = Number(order.total_price || 0);
+
+                // 1. حساب الريفنيو (الأرباح)
+                // بنحسب الفلوس لو الحالة: مؤكد، أو مشحون، أو تم التوصيل
+                // (Pending مش بنحسبه لسه، و Cancelled مش بنحسبه خالص)
+                if (['confirmed', 'shipped', 'delivered'].includes(status)) {
+                    revenue += amount;
+                }
+
+                // 2. حساب الطلبات النشطة (Active)
+                // أي طلب لسه شغال (انتظار، مؤكد، أو خرج للشحن)
+                if (['pending', 'confirmed', 'shipped'].includes(status)) {
+                    active++;
+                }
+
+                // 3. حساب الطلبات المكتملة (Completed)
+                // اللي وصل للعميل فقط
+                if (status === 'delivered') {
+                    completed++;
+                }
+            });
 
             setStats({
                 totalRevenue: revenue,
-                activeOrders: pending,
+                activeOrders: active,
                 completedOrders: completed,
-                totalProducts: products.length // أو هات العدد الكلي بـ count
+                totalProducts: products.length
             })
 
-            // ب. تجهيز بيانات الرسم البياني (آخر 7 أيام)
+            // --- تجهيز الرسم البياني (Sales Chart) ---
+            // هنا بنعرض المبيعات "المؤكدة" بس في الرسم البياني
             const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const d = subDays(new Date(), i)
-                return format(d, 'MMM dd') // e.g., "Feb 10"
+                return format(d, 'MMM dd')
             }).reverse()
 
             const chartData = last7Days.map(dateStr => {
-                // احسب مبيعات اليوم ده
                 const daySales = allOrders
-                    .filter(o => format(new Date(o.created_at), 'MMM dd') === dateStr && o.status !== 'cancelled')
+                    .filter(o =>
+                        format(new Date(o.created_at), 'MMM dd') === dateStr &&
+                        ['confirmed', 'shipped', 'delivered'].includes(o.status) // شرط الفلوس المؤكدة
+                    )
                     .reduce((sum, o) => sum + Number(o.total_price || 0), 0)
 
                 return { name: dateStr, sales: daySales }
             })
             setSalesData(chartData)
 
-            // ج. المنتجات الأكثر مبيعاً
             setTopProducts(products)
-
-            // د. آخر 5 طلبات
             setRecentOrders(allOrders.slice(0, 5))
 
         } catch (error) {
@@ -92,7 +112,6 @@ const DashboardHome = () => {
         }
     }
 
-    // Skeleton Loading (شكل التحميل)
     if (loading) {
         return <div className="p-8 flex justify-center items-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>
     }
@@ -103,7 +122,7 @@ const DashboardHome = () => {
             {/* 1. Header */}
             <div>
                 <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
-                <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
+                <p className="text-gray-500">Welcome back! Here's your business performance.</p>
             </div>
 
             {/* 2. Stats Cards */}
@@ -111,25 +130,28 @@ const DashboardHome = () => {
                 <StatCard
                     title="Total Revenue"
                     value={`${stats.totalRevenue.toLocaleString()} EGP`}
+                    subValue="Confirmed & Delivered"
                     icon={DollarSign}
                     color="bg-green-100 text-green-600"
                 />
                 <StatCard
                     title="Active Orders"
                     value={stats.activeOrders}
+                    subValue="Pending & In-Progress"
                     icon={Clock}
                     color="bg-orange-100 text-orange-600"
                 />
                 <StatCard
                     title="Completed Orders"
                     value={stats.completedOrders}
+                    subValue="Successfully Delivered"
                     icon={CheckCircle}
                     color="bg-blue-100 text-blue-600"
                 />
                 <StatCard
                     title="Top Products"
                     value={stats.totalProducts}
-                    subValue="Items in stock"
+                    subValue="Best sellers count"
                     icon={Package}
                     color="bg-purple-100 text-purple-600"
                 />
@@ -137,17 +159,16 @@ const DashboardHome = () => {
 
             {/* 3. Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Sales Chart (Takes 2 columns) */}
+                {/* Sales Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Sales Analytics (Last 7 Days)</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Revenue Analytics (Confirmed Orders)</h3>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={salesData}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -155,15 +176,15 @@ const DashboardHome = () => {
                                 <YAxis axisLine={false} tickLine={false} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    formatter={(value) => [`${value} EGP`, 'Sales']}
+                                    formatter={(value) => [`${value} EGP`, 'Revenue']}
                                 />
-                                <Area type="monotone" dataKey="sales" stroke="#D4AF37" fillOpacity={1} fill="url(#colorSales)" />
+                                <Area type="monotone" dataKey="sales" stroke="#10B981" fillOpacity={1} fill="url(#colorSales)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Top Products Chart (Takes 1 column) */}
+                {/* Top Products Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Best Sellers</h3>
                     <div className="h-80 w-full">
@@ -211,11 +232,15 @@ const DashboardHome = () => {
                                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="p-4 font-medium text-gray-800">{order.customer_name}</td>
                                     <td className="p-4">
+                                        {/* Status Badge Logic */}
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold 
-                      ${order.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                    order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                            {order.status.toUpperCase()}
+                      ${order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                                                order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                                                    order.status === 'shipped' ? 'bg-purple-100 text-purple-700' :
+                                                        order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                            'bg-yellow-100 text-yellow-700' // Pending
+                                            }`}>
+                                            {order.status ? order.status.toUpperCase() : 'PENDING'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-gray-600">{order.total_price} EGP</td>
@@ -233,7 +258,7 @@ const DashboardHome = () => {
     )
 }
 
-// مكون بسيط للكروت عشان الكود يبقى نضيف
+// Card Component
 const StatCard = ({ title, value, subValue, icon: Icon, color }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow">
         <div>
