@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react'
+import { Lock, Mail, Loader2, AlertCircle, ArrowLeft } from 'lucide-react' // 👈 ضفنا ايقونة السهم
 import { toast } from 'react-hot-toast'
 
 const Login = () => {
@@ -24,7 +24,6 @@ const Login = () => {
             if (authError) throw new Error("Invalid email or password")
 
             // 2. التحقق من الصلاحيات (Role Check)
-            // بنروح لجدول profiles نشوف الشخص ده مين
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -32,7 +31,6 @@ const Login = () => {
                 .single()
 
             if (profileError || !profile) {
-                // لو ملوش ملف شخصي، يبقى ده متطفل
                 await supabase.auth.signOut()
                 throw new Error("Access Denied: No profile found.")
             }
@@ -116,6 +114,18 @@ const Login = () => {
                     <div className="flex items-start gap-2 text-xs text-yellow-600 bg-yellow-50 p-3 rounded-lg">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
                         <p>Only registered staff members can log in. Contact the administrator if you need access.</p>
+                    </div>
+
+                    {/* 👇 زرار الرجوع الجديد 👇 */}
+                    <div className="pt-2 text-center border-t border-gray-100">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/')} // بيرجع للصفحة الرئيسية
+                            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium p-2"
+                        >
+                            <ArrowLeft size={16} />
+                            Back to Home
+                        </button>
                     </div>
 
                 </form>

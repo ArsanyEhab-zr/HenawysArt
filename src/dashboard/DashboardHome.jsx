@@ -8,6 +8,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts'
 import { format, subDays } from 'date-fns'
+import VisitorsCard from './components/VisitorsCard' // 👈 استيراد كارت الزوار الجديد
 
 const DashboardHome = () => {
     const [stats, setStats] = useState({
@@ -123,7 +124,12 @@ const DashboardHome = () => {
             </div>
 
             {/* 2. Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* 👇 عدلت الـ grid عشان يستوعب الكارت الجديد بشكل متناسق */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+
+                {/* 🟢 كارت الزوار الجديد في الأول */}
+                <VisitorsCard />
+
                 <StatCard
                     title="Total Revenue"
                     value={`${stats.totalRevenue.toLocaleString()} EGP`}
