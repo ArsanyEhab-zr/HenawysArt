@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag } from 'lucide-react'
+import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag, Phone } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
@@ -34,7 +34,10 @@ const getColorNameFromHex = (hex) => {
 };
 
 const OrderModal = ({ isOpen, onClose, product }) => {
+  // State Variables
   const [customerName, setCustomerName] = useState('')
+  // 👇 State جديدة لرقم الهاتف
+  const [phone, setPhone] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [shippingRatesList, setShippingRatesList] = useState([])
   const [shippingLoading, setShippingLoading] = useState(true)
@@ -45,23 +48,27 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [pickerHex, setPickerHex] = useState('#ffffff')
   const [notes, setNotes] = useState('')
 
+  // Location States
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
   const [gpsError, setGpsError] = useState('')
 
+  // Addons States
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [selections, setSelections] = useState({})
 
+  // Coupon States
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponMsg, setCouponMsg] = useState({ type: '', text: '' })
 
+  // Upload States
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // حساب مصاريف الشحن
+  // حساب مصاريف الشحن (بيتحدث تلقائي لما المحافظة تتغير)
   const shippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
 
   useEffect(() => {
@@ -79,6 +86,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setGovernorate('')
       setAddress('')
       setNotes('')
+      setPhone('') // 👇 تصفير رقم الهاتف عند الفتح
       setLocationLink('')
       setIsLocating(false)
       setGpsError('')
@@ -118,30 +126,56 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     finally { setLoadingAddons(false) }
   }
 
+  // 🔥🔥🔥 Coupon Logic (Updated with Phone Check) 🔥🔥🔥
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
+
+    // 1. التحقق من إدخال رقم الهاتف أولاً
+    if (!phone.trim() || phone.length < 10) {
+      setCouponMsg({ type: 'error', text: 'Please enter a valid phone number first.' })
+      return;
+    }
+
     setCouponLoading(true)
     setCouponMsg({ type: '', text: '' })
     setAppliedCoupon(null)
 
     try {
-      const { data, error } = await supabase
+      // 2. جلب بيانات الكوبون
+      const { data: couponData, error } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', couponCode.trim())
         .single()
 
-      if (error || !data) throw new Error("Invalid coupon code")
-      if (!data.is_active) throw new Error("This coupon is no longer active")
+      if (error || !couponData) throw new Error("Invalid coupon code")
+      if (!couponData.is_active) throw new Error("This coupon is inactive")
 
+      // 3. التحقق من التواريخ
       const now = new Date()
-      const start = new Date(data.start_date)
-      const end = new Date(data.end_date)
-      if (now < start) throw new Error("Coupon hasn't started yet")
-      if (now > end) throw new Error("Coupon has expired")
+      if (now < new Date(couponData.start_date)) throw new Error("Coupon hasn't started yet")
+      if (now > new Date(couponData.end_date)) throw new Error("Coupon has expired")
 
-      setAppliedCoupon(data)
-      setCouponMsg({ type: 'success', text: `Coupon applied! (${data.discount_type === 'percent' ? data.discount_value + '%' : data.discount_value + ' EGP'} OFF)` })
+      // 4. التحقق من الحد الأقصى للاستخدام العام (Global Limit)
+      // (تأكد إنك ضفت الأعمدة دي في الداتابيز: usage_limit و used_count)
+      if (couponData.usage_limit && couponData.used_count >= couponData.usage_limit) {
+        throw new Error("This coupon has reached its usage limit.")
+      }
+
+      // 5. التحقق إن الرقم ده مستخدمش الكوبون ده قبل كدة (Per User Limit)
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('phone', phone.trim()) // البحث برقم الهاتف
+        .eq('items->>coupon', couponCode.trim()) // البحث عن الكود داخل الـ JSON
+
+      if (count > 0) {
+        throw new Error("You have already used this coupon code!")
+      }
+
+      // 6. نجاح التفعيل
+      setAppliedCoupon(couponData)
+      setCouponMsg({ type: 'success', text: `Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` })
     } catch (err) {
       setCouponMsg({ type: 'error', text: err.message || "Invalid Code" })
       setAppliedCoupon(null)
@@ -150,16 +184,20 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }
 
+  // Radio Buttons Logic (Toggle)
   const handleToggleAddon = (addon) => {
     setSelections(prev => {
       const newSelections = { ...prev }
+
       if (addon.ui_type === 'checkbox') {
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
+
       } else if (addon.ui_type === 'radio') {
         if (newSelections[addon.id]) {
-          delete newSelections[addon.id]
+          delete newSelections[addon.id] // Toggle OFF
         } else {
+          // Remove other radios
           Object.values(newSelections).forEach(selected => {
             if (selected.ui_type === 'radio') {
               delete newSelections[selected.id]
@@ -172,40 +210,35 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // 🔥🔥🔥 تعديل جوهري في دالة التحديد التلقائي 🔥🔥🔥
+  // Auto-Detect Logic (Smart Fuzzy Search)
   const autoSelectGovernorate = (addressData) => {
     if (!addressData || shippingRatesList.length === 0) return;
 
-    // توحيد النصوص لحروف صغيرة للمقارنة
     const fullText = (addressData.display_name || '').toLowerCase();
     let detectedGov = '';
 
-    // 1. منطق الإسكندرية (المحسن)
+    // 1. Alexandria Logic
     if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
-      // بحث عن العجمي
-      if (fullText.includes('agami') || fullText.includes('hannoville') || fullText.includes('العجمي')) {
+      if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
         const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
         if (match) detectedGov = match.governorate;
       }
-      // بحث عن برج العرب
       else if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
         const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('borg'));
         if (match) detectedGov = match.governorate;
       }
 
-      // لو ملقاش مناطق فرعية، يختار "السنتر" أو أي حاجة فيها "إسكندرية"
       if (!detectedGov) {
         const centerMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('center') && r.governorate.toLowerCase().includes('alexandria'));
         if (centerMatch) {
           detectedGov = centerMatch.governorate;
         } else {
-          // حل أخير: هات أي محافظة اسمها فيه "Alexandria"
           const fallbackMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('alexandria'));
           if (fallbackMatch) detectedGov = fallbackMatch.governorate;
         }
       }
     }
-    // 2. باقي المحافظات
+    // 2. Other Governorates
     else {
       const foundRate = shippingRatesList.find(rate => {
         const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
@@ -214,10 +247,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (foundRate) detectedGov = foundRate.governorate;
     }
 
-    // 3. تطبيق النتيجة
     if (detectedGov) {
       setGovernorate(detectedGov);
-      setGpsError(''); // مسح أي خطأ
+      setGpsError('');
     } else {
       setGpsError('Detected address, but could not match city automatically.');
     }
@@ -241,7 +273,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
           if (data && data.display_name) {
             setAddress(data.display_name)
-            // 👇 تشغيل الدالة المحسنة
             autoSelectGovernorate(data);
           }
         } catch (error) {
@@ -257,6 +288,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     )
   }
 
+  // Price Calculation
   const calculateTotals = () => {
     if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
 
@@ -314,6 +346,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
+    if (!phone.trim()) { alert('Please enter phone number'); return } // 👇 تحقق من الهاتف
     if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
     if (!address.trim()) { alert('Please enter detailed address'); return }
 
@@ -328,6 +361,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     try {
       const { error: orderError } = await supabase.from('orders').insert([{
         customer_name: customerName,
+        phone: phone, // 👇 حفظ رقم الهاتف في الداتابيز
         governorate: governorate,
         address: address,
         total_price: grandTotal,
@@ -348,6 +382,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (orderError) console.error("Dashboard insert failed", orderError)
 
       await supabase.rpc('increment_sold_count', { product_id: product.id })
+
+      // لو فيه كوبون مستخدم، زود العداد بتاعه
       if (appliedCoupon) {
         await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
       }
@@ -356,6 +392,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
 
     let detailsString = `\n--- 📋 Order Details ---\n`
+    detailsString += `👤 Customer: ${customerName}\n`
+    detailsString += `📱 Phone: ${phone}\n` // 👇 إضافة الهاتف للرسالة
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
     if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n`
@@ -398,6 +436,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
 
+            {/* Header */}
             <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white relative">
               <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
               <h2 className="text-2xl font-script font-bold">Customize Order</h2>
@@ -422,6 +461,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
+              {/* Addons */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 {loadingAddons ? <Loader2 className="animate-spin mx-auto" /> : availableAddons.map(addon => {
                   const isSelected = !!selections[addon.id]
@@ -441,6 +481,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 })}
               </div>
 
+              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-text mb-2">Ref Image (Optional)</label>
                 <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
@@ -451,6 +492,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
+              {/* Custom Fields */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Type size={16} /> Quote / Date on Item</label>
@@ -467,6 +509,22 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
+              {/* Phone Input (NEW) - قبل الكوبون عشان نعرف نتحقق */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                  <Phone size={16} /> Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="01xxxxxxxxx"
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20"
+                  required
+                />
+              </div>
+
+              {/* Coupons Section */}
               {!product.is_starting_price && (
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Tag size={16} /> Promo Code</label>
@@ -483,6 +541,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               <hr className="border-gray-100" />
 
+              {/* Location & Name */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
