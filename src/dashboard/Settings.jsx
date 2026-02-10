@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
     Truck, Tag, Save, Plus, Trash2, Calendar,
-    Percent, DollarSign, CheckCircle, XCircle, Loader2, AlertCircle
+    Percent, DollarSign, CheckCircle, XCircle, Loader2, AlertCircle, Users
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -22,7 +22,8 @@ const Settings = () => {
         discount_type: 'percent', // or 'fixed'
         start_date: '',
         end_date: '',
-        is_active: true
+        is_active: true,
+        usage_limit: 100 // 👇 القيمة الافتراضية للحد الأقصى
     })
 
     useEffect(() => {
@@ -90,7 +91,9 @@ const Settings = () => {
                 discount_type: couponForm.discount_type,
                 start_date: couponForm.start_date || new Date().toISOString(),
                 end_date: couponForm.end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-                is_active: couponForm.is_active
+                is_active: couponForm.is_active,
+                usage_limit: Number(couponForm.usage_limit) || 100, // 👇 حفظ حد الاستخدام
+                used_count: 0 // البداية دايماً صفر
             }
 
             const { data, error } = await supabase
@@ -110,7 +113,8 @@ const Settings = () => {
                 discount_type: 'percent',
                 start_date: '',
                 end_date: '',
-                is_active: true
+                is_active: true,
+                usage_limit: 100
             })
         } catch (error) {
             console.error(error)
@@ -223,7 +227,7 @@ const Settings = () => {
                                         <th className="p-4">Code</th>
                                         <th className="p-4">Discount</th>
                                         <th className="p-4">Status</th>
-                                        <th className="p-4">Usage</th>
+                                        <th className="p-4">Usage (Used / Limit)</th> {/* 👇 تعديل العنوان */}
                                         <th className="p-4">Expires</th>
                                         <th className="p-4 text-right">Actions</th>
                                     </tr>
@@ -246,7 +250,13 @@ const Settings = () => {
                                                     {coupon.is_active ? 'Active' : 'Inactive'}
                                                 </button>
                                             </td>
-                                            <td className="p-4 text-sm text-gray-600">{coupon.usage_count || 0} times</td>
+                                            <td className="p-4 text-sm text-gray-600">
+                                                {/* 👇 عرض العداد / الحد الأقصى */}
+                                                <span className={`font-bold ${coupon.used_count >= coupon.usage_limit ? 'text-red-500' : 'text-gray-700'}`}>
+                                                    {coupon.used_count || 0}
+                                                </span>
+                                                <span className="text-gray-400"> / {coupon.usage_limit || '∞'}</span>
+                                            </td>
                                             <td className="p-4 text-sm text-gray-500">{new Date(coupon.end_date).toLocaleDateString()}</td>
                                             <td className="p-4 text-right">
                                                 <button
@@ -272,7 +282,7 @@ const Settings = () => {
             {/* ================= MODAL: ADD COUPON ================= */}
             {isCouponModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
                         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="font-bold text-gray-800">Create New Coupon</h3>
                             <button onClick={() => setIsCouponModalOpen(false)}><XCircle className="text-gray-400 hover:text-gray-600" /></button>
@@ -314,6 +324,22 @@ const Settings = () => {
                                         <option value="fixed">Fixed Amount (EGP)</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            {/* 👇 خانة الحد الأقصى للاستخدام (الجديدة) */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                                    <Users size={16} /> Usage Limit (Max Customers)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={couponForm.usage_limit}
+                                    onChange={e => setCouponForm({ ...couponForm, usage_limit: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="e.g. 100"
+                                    min="1"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Leave blank or high number for unlimited.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
