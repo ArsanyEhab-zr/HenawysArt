@@ -18,17 +18,40 @@ const CategoryPage = () => {
 
   useEffect(() => {
     fetchCategoryProducts()
+
+    // 👇👇👇 كود الاستماع اللحظي (Realtime) 👇👇👇
+    const channel = supabase
+      .channel('realtime-category-products')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'products' },
+        (payload) => {
+          // لما يحصل أي تعديل في المخزون، نحدث المنتج ده فوراً في الشاشة
+          setProducts((currentProducts) =>
+            currentProducts.map((product) =>
+              product.id === payload.new.id ? payload.new : product
+            )
+          )
+        }
+      )
+      .subscribe()
+
+    // تنظيف الاشتراك لما تخرج من الصفحة
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // 👆👆👆 نهاية الكود الجديد 👆👆👆
+
   }, [category])
 
   const fetchCategoryProducts = async () => {
     try {
       setLoading(true)
-      
+
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('category', category)
-        // 👇 هذا هو التعديل: ترتيب المنتجات حسب السعر تصاعدياً
         .order('price', { ascending: true })
 
       if (error) throw error
@@ -68,8 +91,8 @@ const CategoryPage = () => {
           <p className="text-text-light mb-8">
             We couldn't find any products in the "{categoryName}" category yet.
           </p>
-          <Link 
-            to="/shop" 
+          <Link
+            to="/shop"
             className="inline-flex items-center gap-2 text-primary hover:text-primary-dark transition-colors border border-primary px-6 py-2 rounded-full hover:bg-primary/5"
           >
             <ArrowLeft size={20} />
