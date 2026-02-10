@@ -17,7 +17,7 @@ const DashboardLayout = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false)
     const [userRole, setUserRole] = useState(null)
     const [userName, setUserName] = useState('')
-    const [userAvatar, setUserAvatar] = useState(null) // 👈 1. ضفنا حالة للصورة
+    const [userAvatar, setUserAvatar] = useState(null)
     const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
     const location = useLocation()
@@ -32,7 +32,6 @@ const DashboardLayout = () => {
                     return
                 }
 
-                // 👇 2. ضفنا avatar_url في الـ select
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('role, full_name, avatar_url')
@@ -43,7 +42,7 @@ const DashboardLayout = () => {
 
                 setUserRole(data?.role)
                 setUserName(data?.full_name || 'Admin')
-                setUserAvatar(data?.avatar_url) // 👈 تخزين الصورة
+                setUserAvatar(data?.avatar_url)
             } catch (error) {
                 console.error('Error fetching profile:', error)
                 navigate('/login')
@@ -61,7 +60,7 @@ const DashboardLayout = () => {
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        navigate('/login')
+        navigate('/') // 👈 التعديل هنا: يرجعك للصفحة الرئيسية (Home)
     }
 
     // 3. تعريف القائمة والصلاحيات
@@ -134,17 +133,16 @@ const DashboardLayout = () => {
                         </button>
                     </div>
 
-                    {/* User Info Snippet (الجزء المعدل 🌟) */}
+                    {/* User Info Snippet */}
                     <div className="p-4 border-b border-gray-50 bg-gray-50/50">
                         <div className="flex items-center gap-3">
-                            {/* 👇 هنا بنعرض الصورة لو موجودة، أو الأيقونة لو مفيش */}
                             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200">
                                 {userAvatar ? (
                                     <img
                                         src={userAvatar}
                                         alt="Profile"
                                         className="w-full h-full object-cover"
-                                        onError={(e) => e.target.style.display = 'none'} // حماية لو الرابط بايظ
+                                        onError={(e) => e.target.style.display = 'none'}
                                     />
                                 ) : (
                                     <UserCircle size={24} className="text-indigo-600" />
