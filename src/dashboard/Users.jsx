@@ -1,29 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
-    Trash2, Shield, ShieldOff, Lock, Unlock, Search,
-    User, Mail, Loader2, CheckCircle, AlertCircle
+    Search, Shield, ShieldAlert, User,
+    CheckCircle, XCircle, Loader2, Ban, Trash2
 } from 'lucide-react'
-import { toast } from 'react-hot-toast' // لو مش منزلها استخدم alert عادي
+import { toast } from 'react-hot-toast'
 
 const Users = () => {
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
-    const [currentUserId, setCurrentUserId] = useState(null)
+    const [currentUserId, setCurrentUserId] = useState(null) // 👈 عشان نعرف مين اللي فاتح
 
     useEffect(() => {
+        fetchCurrentUser()
         fetchUsers()
-        getCurrentUser()
     }, [])
 
-    // 1. معرفة مين اللي فاتح عشان ميحذفش نفسه
-    const getCurrentUser = async () => {
+    // 1. نعرف مين اللي فاتح عشان نمنعه يحذف نفسه
+    const fetchCurrentUser = async () => {
         const { data: { user } } = await supabase.auth.getUser()
-        setCurrentUserId(user?.id)
+        if (user) setCurrentUserId(user.id)
     }
 
-    // 2. جلب كل المستخدمين
+    // 2. نجيب قائمة المستخدمين
     const fetchUsers = async () => {
         try {
             setLoading(true)
@@ -33,18 +33,38 @@ const Users = () => {
                 .order('created_at', { ascending: false })
 
             if (error) throw error
-            setUsers(data)
+            setUsers(data || [])
         } catch (error) {
-            toast.error("Failed to load users")
             console.error(error)
+            toast.error("Failed to load users. Check permissions!")
         } finally {
             setLoading(false)
         }
     }
 
-    // 3. دالة الحظر / فك الحظر
+    // تغيير الصلاحية
+    const toggleRole = async (id, currentRole) => {
+        if (id === currentUserId) return toast.error("You cannot change your own role!") // 🛡️ حماية
+
+        const newRole = currentRole === 'admin' ? 'employee' : 'admin'
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', id)
+
+            if (error) throw error
+
+            setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u))
+            toast.success(`User role updated to ${newRole}`)
+        } catch (error) {
+            toast.error("Error updating role")
+        }
+    }
+
+    // حظر المستخدم
     const toggleBlock = async (id, currentStatus) => {
-        if (id === currentUserId) return toast.error("You cannot block yourself!")
+        if (id === currentUserId) return toast.error("You cannot block yourself!") // 🛡️ حماية
 
         try {
             const { error } = await supabase
@@ -54,203 +74,143 @@ const Users = () => {
 
             if (error) throw error
 
-            // تحديث الواجهة فوراً
-            setUsers(users.map(user =>
-                user.id === id ? { ...user, is_blocked: !currentStatus } : user
-            ))
-
+            setUsers(users.map(u => u.id === id ? { ...u, is_blocked: !currentStatus } : u))
             toast.success(currentStatus ? "User Unblocked" : "User Blocked")
         } catch (error) {
             toast.error("Error updating status")
         }
     }
 
-    // 4. دالة تغيير الدور (ترقية/تنزيل)
-    const toggleRole = async (id, currentRole) => {
-        if (id === currentUserId) return toast.error("You cannot change your own role!")
-
-        const newRole = currentRole === 'admin' ? 'employee' : 'admin'
+    // حذف المستخدم
+    const handleDeleteUser = async (id) => {
+        if (id === currentUserId) return toast.error("You cannot delete your own profile!") // 🛡️ حماية
+        if (!window.confirm("Warning: This removes the profile data only. Are you sure?")) return
 
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role: newRole })
-                .eq('id', id)
-
+            const { error } = await supabase.from('profiles').delete().eq('id', id)
             if (error) throw error
 
-            setUsers(users.map(user =>
-                user.id === id ? { ...user, role: newRole } : user
-            ))
-
-            toast.success(`User is now an ${newRole}`)
+            setUsers(users.filter(u => u.id !== id))
+            toast.success("Profile deleted")
         } catch (error) {
-            toast.error("Error updating role")
+            toast.error("Error deleting profile")
         }
     }
 
-    // 5. دالة الحذف
-    const handleDelete = async (id) => {
-        if (id === currentUserId) return toast.error("You cannot delete yourself!")
-
-        if (!window.confirm("Are you sure? This action cannot be undone.")) return
-
-        try {
-            const { error } = await supabase
-                .from('profiles')
-                .delete()
-                .eq('id', id)
-
-            if (error) throw error
-
-            setUsers(users.filter(user => user.id !== id))
-            toast.success("User deleted successfully")
-        } catch (error) {
-            toast.error("Error deleting user")
-        }
-    }
-
-    // فلتر البحث
-    const filteredUsers = users.filter(user =>
-        user.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        user.email?.toLowerCase().includes(search.toLowerCase())
+    const filteredUsers = users.filter(u =>
+        (u.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(search.toLowerCase())
     )
 
     return (
         <div className="space-y-6">
+
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Users Management</h1>
-                    <p className="text-gray-500 text-sm">Manage staff access and roles</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Staff Management</h1>
+                    <p className="text-gray-500 text-sm">Control access and roles.</p>
                 </div>
 
-                {/* Search Bar */}
+                {/* Search */}
                 <div className="relative w-full md:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search users..."
+                        placeholder="Search staff..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                 </div>
             </div>
 
-            {/* Table */}
+            {/* Users Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
-                    <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div>
+                    <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
                                 <tr>
-                                    <th className="p-4 font-medium">User</th>
-                                    <th className="p-4 font-medium">Role</th>
-                                    <th className="p-4 font-medium">Status</th>
-                                    <th className="p-4 font-medium text-right">Actions</th>
+                                    <th className="p-4">User Info</th>
+                                    <th className="p-4">Role</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {filteredUsers.map((user) => (
-                                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-
-                                        {/* User Info */}
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                                                    {user.avatar_url ? (
-                                                        <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <User className="text-gray-400" size={20} />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-gray-800">{user.full_name || 'No Name'}</p>
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                        <Mail size={10} />
-                                                        {user.email || 'No Email'}
+                                {filteredUsers.map(user => {
+                                    const isMe = user.id === currentUserId // هل ده أنا؟
+                                    return (
+                                        <tr key={user.id} className={`transition-colors ${isMe ? 'bg-blue-50/30' : 'hover:bg-gray-50/50'}`}>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-lg overflow-hidden">
+                                                        {/* عرض أول حرف أو أيقونة */}
+                                                        {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User size={20} />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-800 flex items-center gap-2">
+                                                            {user.full_name || 'Unknown Name'}
+                                                            {isMe && <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">YOU</span>}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">{user.email || 'No Email'}</p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </td>
+                                            </td>
 
-                                        {/* Role Badge */}
-                                        <td className="p-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 w-fit
-                        ${user.role === 'admin'
-                                                    ? 'bg-purple-50 text-purple-700 border-purple-100'
-                                                    : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                                {user.role === 'admin' ? <Shield size={12} /> : <User size={12} />}
-                                                {user.role.toUpperCase()}
-                                            </span>
-                                        </td>
-
-                                        {/* Status Badge */}
-                                        <td className="p-4">
-                                            {user.is_blocked ? (
-                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-100 flex items-center gap-1 w-fit">
-                                                    <Lock size={12} /> BLOCKED
-                                                </span>
-                                            ) : (
-                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600 border border-green-100 flex items-center gap-1 w-fit">
-                                                    <CheckCircle size={12} /> ACTIVE
-                                                </span>
-                                            )}
-                                        </td>
-
-                                        {/* Actions Buttons */}
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-2">
-
-                                                {/* Change Role Button */}
+                                            <td className="p-4">
                                                 <button
                                                     onClick={() => toggleRole(user.id, user.role)}
-                                                    title="Change Role"
-                                                    className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
+                                                    disabled={isMe} // ممنوع تغير رتبة نفسك
+                                                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border transition-all ${user.role === 'admin'
+                                                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                                                        } ${!isMe && 'hover:shadow-sm cursor-pointer'} ${isMe && 'opacity-70 cursor-not-allowed'}`}
                                                 >
-                                                    {user.role === 'admin' ? <ShieldOff size={18} /> : <Shield size={18} />}
+                                                    {user.role === 'admin' ? <ShieldAlert size={12} /> : <Shield size={12} />}
+                                                    {user.role === 'admin' ? 'Administrator' : 'Employee'}
                                                 </button>
+                                            </td>
 
-                                                {/* Block/Unblock Button */}
+                                            <td className="p-4">
                                                 <button
                                                     onClick={() => toggleBlock(user.id, user.is_blocked)}
-                                                    title={user.is_blocked ? "Unblock User" : "Block User"}
-                                                    className={`p-2 rounded-lg transition-colors ${user.is_blocked
-                                                            ? 'text-green-500 hover:bg-green-50'
-                                                            : 'text-orange-500 hover:bg-orange-50'
-                                                        }`}
+                                                    disabled={isMe} // ممنوع تحظر نفسك
+                                                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border transition-all ${user.is_blocked
+                                                            ? 'bg-red-50 text-red-600 border-red-200'
+                                                            : 'bg-green-50 text-green-600 border-green-200'
+                                                        } ${!isMe && 'hover:shadow-sm cursor-pointer'} ${isMe && 'opacity-70 cursor-not-allowed'}`}
                                                 >
-                                                    {user.is_blocked ? <Unlock size={18} /> : <Lock size={18} />}
+                                                    {user.is_blocked ? <Ban size={12} /> : <CheckCircle size={12} />}
+                                                    {user.is_blocked ? 'Blocked' : 'Active'}
                                                 </button>
+                                            </td>
 
-                                                {/* Delete Button */}
+                                            <td className="p-4 text-right">
                                                 <button
-                                                    onClick={() => handleDelete(user.id)}
-                                                    title="Delete User"
-                                                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                    onClick={() => handleDeleteUser(user.id)}
+                                                    disabled={isMe} // ممنوع تمسح نفسك
+                                                    className={`p-2 transition-colors rounded-lg ${isMe ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                                                    title="Delete Profile"
                                                 >
                                                     <Trash2 size={18} />
                                                 </button>
-
-                                            </div>
-                                        </td>
-
-                                    </tr>
-                                ))}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
-                        {filteredUsers.length === 0 && !loading && (
-                            <div className="p-8 text-center text-gray-400 flex flex-col items-center">
-                                <AlertCircle size={40} className="mb-2 opacity-20" />
-                                <p>No users found matching "{search}"</p>
-                            </div>
+                        {filteredUsers.length === 0 && (
+                            <div className="p-8 text-center text-gray-400">No users found.</div>
                         )}
                     </div>
                 )}
             </div>
+
         </div>
     )
 }
