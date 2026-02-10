@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck } from 'lucide-react'
+import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
@@ -14,67 +14,37 @@ const GOVERNORATES_LIST = [
   "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag", "Red Sea"
 ]
 
-// 2. قائمة الألوان الشائعة (عشان نترجم الكود لاسم)
+// 2. قائمة الألوان
 const COMMON_COLORS = [
-  { hex: "#000000", name: "Black" },
-  { hex: "#FFFFFF", name: "White" },
-  { hex: "#808080", name: "Gray" },
-  { hex: "#C0C0C0", name: "Silver" },
-  { hex: "#FF0000", name: "Red" },
-  { hex: "#800000", name: "Maroon" },
-  { hex: "#FFFF00", name: "Yellow" },
-  { hex: "#808000", name: "Olive" },
-  { hex: "#00FF00", name: "Lime" },
-  { hex: "#008000", name: "Green" },
-  { hex: "#00FFFF", name: "Aqua" },
-  { hex: "#008080", name: "Teal" },
-  { hex: "#0000FF", name: "Blue" },
-  { hex: "#000080", name: "Navy Blue" },
-  { hex: "#FF00FF", name: "Fuchsia" },
-  { hex: "#800080", name: "Purple" },
-  { hex: "#FFA500", name: "Orange" },
-  { hex: "#FFC0CB", name: "Pink" },
-  { hex: "#FFD700", name: "Gold" },
-  { hex: "#F5F5DC", name: "Beige" },
-  { hex: "#A52A2A", name: "Brown" },
-  { hex: "#40E0D0", name: "Turquoise" },
-  { hex: "#ADD8E6", name: "Light Blue" },
-  { hex: "#F0E68C", name: "Khaki" },
+  { hex: "#000000", name: "Black" }, { hex: "#FFFFFF", name: "White" }, { hex: "#808080", name: "Gray" },
+  { hex: "#C0C0C0", name: "Silver" }, { hex: "#FF0000", name: "Red" }, { hex: "#800000", name: "Maroon" },
+  { hex: "#FFFF00", name: "Yellow" }, { hex: "#808000", name: "Olive" }, { hex: "#00FF00", name: "Lime" },
+  { hex: "#008000", name: "Green" }, { hex: "#00FFFF", name: "Aqua" }, { hex: "#008080", name: "Teal" },
+  { hex: "#0000FF", name: "Blue" }, { hex: "#000080", name: "Navy Blue" }, { hex: "#FF00FF", name: "Fuchsia" },
+  { hex: "#800080", name: "Purple" }, { hex: "#FFA500", name: "Orange" }, { hex: "#FFC0CB", name: "Pink" },
+  { hex: "#FFD700", name: "Gold" }, { hex: "#F5F5DC", name: "Beige" }, { hex: "#A52A2A", name: "Brown" },
+  { hex: "#40E0D0", name: "Turquoise" }, { hex: "#ADD8E6", name: "Light Blue" }, { hex: "#F0E68C", name: "Khaki" },
   { hex: "#E6E6FA", name: "Lavender" }
 ];
 
-// دالة حساب المسافة بين لونين (عشان نعرف أقرب اسم)
+// دالة ترجمة اللون
 const getColorNameFromHex = (hex) => {
-  // تحويل ال Hex ل RGB
   const r = parseInt(hex.substr(1, 2), 16);
   const g = parseInt(hex.substr(3, 2), 16);
   const b = parseInt(hex.substr(5, 2), 16);
-
   let closestColor = "Custom Color";
   let minDistance = Infinity;
-
   COMMON_COLORS.forEach(color => {
     const targetR = parseInt(color.hex.substr(1, 2), 16);
     const targetG = parseInt(color.hex.substr(3, 2), 16);
     const targetB = parseInt(color.hex.substr(5, 2), 16);
-
-    // معادلة المسافة الإقليدية
-    const distance = Math.sqrt(
-      Math.pow(r - targetR, 2) +
-      Math.pow(g - targetG, 2) +
-      Math.pow(b - targetB, 2)
-    );
-
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestColor = color.name;
-    }
+    const distance = Math.sqrt(Math.pow(r - targetR, 2) + Math.pow(g - targetG, 2) + Math.pow(b - targetB, 2));
+    if (distance < minDistance) { minDistance = distance; closestColor = color.name; }
   });
-
   return closestColor;
 };
 
-// 3. دالة حساب الشحن
+// دالة الشحن
 const getShippingFee = (gov) => {
   if (!gov) return 0
   if (gov === "Alexandria (Center)") return 50
@@ -86,28 +56,38 @@ const getShippingFee = (gov) => {
 }
 
 const OrderModal = ({ isOpen, onClose, product }) => {
+  // State Variables
   const [customerName, setCustomerName] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [address, setAddress] = useState('')
   const [customText, setCustomText] = useState('')
   const [bgColor, setBgColor] = useState('')
-  // state جديد عشان نخزن قيمة ال hex للرولة لوحدها
   const [pickerHex, setPickerHex] = useState('#ffffff')
   const [notes, setNotes] = useState('')
 
+  // Location States
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
   const [gpsError, setGpsError] = useState('')
 
+  // Addons States
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [selections, setSelections] = useState({})
 
+  // Coupon States (NEW 🎟️)
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponMsg, setCouponMsg] = useState({ type: '', text: '' })
+
+  // Upload States
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
   const shippingFee = getShippingFee(governorate)
 
+  // Reset Logic
   useEffect(() => {
     if (isOpen && product) {
       fetchAddons()
@@ -122,6 +102,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setLocationLink('')
       setIsLocating(false)
       setGpsError('')
+      setCouponCode('')
+      setAppliedCoupon(null)
+      setCouponMsg({ type: '', text: '' })
     }
   }, [product, isOpen])
 
@@ -134,10 +117,40 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         .or(`category_target.eq.${product.category},category_target.eq.all`)
       if (error) throw error
       setAvailableAddons(data || [])
-    } catch (error) {
-      console.error('Error fetching addons:', error)
+    } catch (error) { console.error('Error fetching addons:', error) }
+    finally { setLoadingAddons(false) }
+  }
+
+  // Coupon Logic 🎟️
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true)
+    setCouponMsg({ type: '', text: '' })
+    setAppliedCoupon(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.trim())
+        .single()
+
+      if (error || !data) throw new Error("Invalid coupon code")
+      if (!data.is_active) throw new Error("This coupon is no longer active")
+
+      const now = new Date()
+      const start = new Date(data.start_date)
+      const end = new Date(data.end_date)
+      if (now < start) throw new Error("Coupon hasn't started yet")
+      if (now > end) throw new Error("Coupon has expired")
+
+      setAppliedCoupon(data)
+      setCouponMsg({ type: 'success', text: `Coupon applied! (${data.discount_type === 'percent' ? data.discount_value + '%' : data.discount_value + ' EGP'} OFF)` })
+    } catch (err) {
+      setCouponMsg({ type: 'error', text: err.message || "Invalid Code" })
+      setAppliedCoupon(null)
     } finally {
-      setLoadingAddons(false)
+      setCouponLoading(false)
     }
   }
 
@@ -155,14 +168,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
+  // Location Logic 📍
   const autoSelectGovernorate = (addressObj) => {
     if (!addressObj) return;
     const state = (addressObj.state || '').toLowerCase();
     const city = (addressObj.city || addressObj.town || '').toLowerCase();
     const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase();
-
     let detectedGov = '';
-    // (نفس منطق المحافظات السابق)
+
+    // Logic for detection
     if (state.includes('alexandria') || city.includes('alexandria')) {
       if (suburb.includes('agami') || city.includes('agami')) detectedGov = "Alexandria (Agami)";
       else if (city.includes('borg') || suburb.includes('borg')) detectedGov = "Alexandria (Borg El Arab)";
@@ -170,8 +184,28 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
     else if (state.includes('cairo') || city.includes('cairo')) detectedGov = "Cairo";
     else if (state.includes('giza') || city.includes('giza')) detectedGov = "Giza";
-    // ... باقي المحافظات لتوفير المساحة (نفس الكود السابق) ...
-    else if (state.includes('dakahlia')) detectedGov = "Dakahlia"; // مثال
+    else if (state.includes('dakahlia')) detectedGov = "Dakahlia";
+    else if (state.includes('beheira')) detectedGov = "Beheira";
+    else if (state.includes('fayoum')) detectedGov = "Fayoum";
+    else if (state.includes('gharbiya')) detectedGov = "Gharbiya";
+    else if (state.includes('ismailia')) detectedGov = "Ismailia";
+    else if (state.includes('monufia')) detectedGov = "Monufia";
+    else if (state.includes('minya')) detectedGov = "Minya";
+    else if (state.includes('qalyubia')) detectedGov = "Qalyubia";
+    else if (state.includes('suez')) detectedGov = "Suez";
+    else if (state.includes('aswan')) detectedGov = "Aswan";
+    else if (state.includes('assiut')) detectedGov = "Assiut";
+    else if (state.includes('beni suef')) detectedGov = "Beni Suef";
+    else if (state.includes('port said')) detectedGov = "Port Said";
+    else if (state.includes('damietta')) detectedGov = "Damietta";
+    else if (state.includes('sharkia')) detectedGov = "Sharkia";
+    else if (state.includes('sinai')) detectedGov = state.includes('south') ? "South Sinai" : "North Sinai";
+    else if (state.includes('kafr')) detectedGov = "Kafr El Sheikh";
+    else if (state.includes('matrouh')) detectedGov = "Matrouh";
+    else if (state.includes('luxor')) detectedGov = "Luxor";
+    else if (state.includes('qena')) detectedGov = "Qena";
+    else if (state.includes('sohag')) detectedGov = "Sohag";
+    else if (state.includes('red sea')) detectedGov = "Red Sea";
 
     if (detectedGov) { setGovernorate(detectedGov); setGpsError(''); }
     else { setGpsError('Could not auto-detect city. Please select manually.'); }
@@ -201,29 +235,52 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     )
   }
 
-  const calculateProductTotal = () => {
-    if (!product) return 0
-    let total = Number(product.price)
+  // Price Calculation Logic 💰
+  const calculateTotals = () => {
+    if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
+
+    let productTotal = Number(product.price)
+
+    // 1. Addons
     const coupleAddon = Object.values(selections).find(a => a.operation_type === 'percent_double_discount')
     if (coupleAddon) {
-      const doublePrice = total * 2
-      const discountValue = doublePrice * (Number(coupleAddon.value) / 100)
-      total = doublePrice - discountValue
+      const doublePrice = productTotal * 2
+      const discountVal = doublePrice * (Number(coupleAddon.value) / 100)
+      productTotal = doublePrice - discountVal
     }
     Object.values(selections).forEach(addon => {
       if (addon.operation_type === 'percent_double_discount') return
-      if (addon.operation_type === 'fixed') total += Number(addon.value)
+      if (addon.operation_type === 'fixed') productTotal += Number(addon.value)
       else if (addon.operation_type === 'percent_add') {
-        const surcharge = Number(product.price) * (Number(addon.value) / 100)
-        total += surcharge
+        productTotal += Number(product.price) * (Number(addon.value) / 100)
       }
     })
-    return Math.ceil(total)
+
+    // 2. Coupons
+    let discountAmount = 0
+    if (appliedCoupon) {
+      if (appliedCoupon.discount_type === 'fixed') {
+        discountAmount = Number(appliedCoupon.discount_value)
+      } else if (appliedCoupon.discount_type === 'percent') {
+        discountAmount = productTotal * (Number(appliedCoupon.discount_value) / 100)
+      }
+    }
+    if (discountAmount > productTotal) discountAmount = productTotal
+
+    const finalProductPrice = Math.ceil(productTotal - discountAmount)
+    const grandTotal = finalProductPrice + shippingFee
+
+    return {
+      productTotalBeforeDiscount: Math.ceil(productTotal),
+      discountAmount: Math.ceil(discountAmount),
+      finalProductPrice,
+      grandTotal
+    }
   }
 
-  const productPrice = calculateProductTotal()
-  const grandTotal = productPrice + shippingFee
+  const { productTotalBeforeDiscount, discountAmount, finalProductPrice, grandTotal } = calculateTotals()
 
+  // Image Upload
   const uploadImage = async (file) => {
     try {
       const fileExt = file.name.split('.').pop()
@@ -236,6 +293,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (error) { return null }
   }
 
+  // Submit & Dashboard Save 🚀
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
@@ -244,14 +302,46 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     if (selectedFile) setIsUploading(true)
 
+    // 1. Upload Image
     let uploadedImageUrl = ''
     if (selectedFile) {
       uploadedImageUrl = await uploadImage(selectedFile)
       if (!uploadedImageUrl) { setIsUploading(false); return }
     }
 
-    try { await supabase.rpc('increment_sold_count', { product_id: product.id }) } catch (err) { }
+    // 2. Insert into Supabase Orders (For Dashboard)
+    try {
+      const { error: orderError } = await supabase.from('orders').insert([{
+        customer_name: customerName,
+        governorate: governorate,
+        address: address,
+        total_price: grandTotal,
+        shipping_fee: shippingFee,
+        status: 'pending',
+        items: {
+          productId: product.id,
+          productName: product.title,
+          addons: selections,
+          customText: customText,
+          bgColor: bgColor,
+          coupon: appliedCoupon ? appliedCoupon.code : null,
+          refImage: uploadedImageUrl
+        },
+        notes: notes
+      }])
 
+      if (orderError) console.error("Dashboard insert failed", orderError)
+
+      // Increment stats
+      await supabase.rpc('increment_sold_count', { product_id: product.id })
+      if (appliedCoupon) {
+        await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
+      }
+    } catch (err) {
+      console.error(err)
+    }
+
+    // 3. Prepare WhatsApp Message
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
@@ -268,9 +358,13 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     if (uploadedImageUrl) detailsString += `\n🖼️ Ref Image: ${uploadedImageUrl}\n`
 
     if (product.is_starting_price) {
-      detailsString += `\n💵 Product Price: Starts from ${product.price} EGP (TBD)`;
+      detailsString += `\n💵 Price: Starts from ${product.price} EGP (TBD)`;
     } else {
-      detailsString += `\n💵 Product Price: ${productPrice} EGP`;
+      detailsString += `\n💵 Item Price: ${productTotalBeforeDiscount} EGP`;
+      if (appliedCoupon) {
+        detailsString += `\n🎟️ Coupon (${appliedCoupon.code}): -${discountAmount} EGP`;
+        detailsString += `\n📉 Price after discount: ${finalProductPrice} EGP`;
+      }
     }
 
     detailsString += `\n🚚 Shipping: ${shippingFee} EGP`;
@@ -301,11 +395,12 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 ) : (
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-accent">{grandTotal} <span className="text-lg">EGP</span></span>
+                    {appliedCoupon && <span className="text-sm text-white/70 line-through">{grandTotal + discountAmount} EGP</span>}
                   </div>
                 )}
                 {!product.is_starting_price && (
-                  <div className="text-xs text-white/80 flex items-center gap-1 mt-1">
-                    <span>Item: {productPrice}</span>
+                  <div className="text-xs text-white/80 flex flex-wrap items-center gap-1 mt-1">
+                    <span>Item: {finalProductPrice}</span>
                     <span>+</span>
                     <span className="flex items-center bg-white/20 px-1 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
                   </div>
@@ -315,7 +410,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-              {/* Addons & Image Upload (نفس الكود) */}
+              {/* Addons */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 {loadingAddons ? <Loader2 className="animate-spin mx-auto" /> : availableAddons.map(addon => {
                   const isSelected = !!selections[addon.id]
@@ -335,6 +430,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 })}
               </div>
 
+              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-text mb-2">Ref Image (Optional)</label>
                 <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
@@ -345,9 +441,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* 👇👇👇 الجزء المعدل: اختيار اللون بالاسم 👇👇👇 */}
+              {/* Custom Fields (Quote & Color) */}
               <div className="grid grid-cols-1 gap-4">
-
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <Type size={16} /> Quote / Date on Item
@@ -366,7 +461,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <Palette size={16} /> Background Color
                   </label>
                   <div className="flex gap-2">
-                    {/* Color Picker Box */}
                     <div className="relative overflow-hidden w-14 h-[50px] rounded-lg border border-gray-200 shadow-sm shrink-0 cursor-pointer">
                       <input
                         type="color"
@@ -374,28 +468,68 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                         onChange={e => {
                           const hex = e.target.value;
                           setPickerHex(hex);
-                          const colorName = getColorNameFromHex(hex); // هنا السحر
-                          setBgColor(colorName); // بيكتب الاسم بدل الهاش
+                          setBgColor(getColorNameFromHex(hex));
                         }}
                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer"
                       />
                     </div>
-                    {/* Text Input (بيظهر فيه الاسم) */}
                     <input
                       type="text"
                       value={bgColor}
                       onChange={e => setBgColor(e.target.value)}
-                      placeholder="Pick color or type name (e.g. Navy Blue)..."
+                      placeholder="Pick color or type name..."
                       className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                   </div>
                 </div>
-
               </div>
+
+              {/* Coupons Section (New) */}
+              {!product.is_starting_price && (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                    <Tag size={16} /> Promo Code
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Enter Code (e.g. SAVE10)"
+                      className="flex-1 px-4 py-2 border border-gray-200 rounded-lg uppercase"
+                      disabled={!!appliedCoupon}
+                    />
+                    {appliedCoupon ? (
+                      <button
+                        type="button"
+                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }}
+                        className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode}
+                        className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50"
+                      >
+                        {couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}
+                      </button>
+                    )}
+                  </div>
+                  {couponMsg.text && (
+                    <p className={`text-xs mt-1 font-medium flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                      {couponMsg.type === 'success' ? <Check size={12} /> : <AlertCircle size={12} />}
+                      {couponMsg.text}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <hr className="border-gray-100" />
 
-              {/* باقي الحقول (المكان والاسم والزرار) */}
+              {/* Location & Name */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>

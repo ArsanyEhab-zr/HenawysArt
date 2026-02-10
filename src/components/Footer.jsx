@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Music, MapPin, Phone, Mail, Heart } from 'lucide-react'
+import { Facebook, Instagram, Music, MapPin, Phone, Mail, Heart, Lock } from 'lucide-react' // ضفت ايقونة Lock
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -25,7 +25,6 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-6">Help & FAQ</h3>
             <ul className="space-y-3 text-sm text-gray-600">
-              {/* لاحظ الروابط بقت عاملة ازاي */}
               <li><Link to="/policies#shipping" className="hover:text-primary transition-colors">Shipping Policy</Link></li>
               <li><Link to="/policies#returns" className="hover:text-primary transition-colors">Returns & Refunds</Link></li>
               <li><Link to="/contact" className="hover:text-primary transition-colors">Customer Service</Link></li>
@@ -37,8 +36,8 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-6">Quick Links</h3>
             <ul className="space-y-3 text-sm text-gray-600">
-              <li><a href="/About" className="hover:text-primary transition-colors">About Us</a></li>
-              <li><a href="/Shop" className="hover:text-primary transition-colors">Shop All</a></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
+              <li><Link to="/shop" className="hover:text-primary transition-colors">Shop All</Link></li>
             </ul>
           </div>
 
@@ -65,15 +64,27 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-gray-500 text-sm">
-            © 2026 Henawy's Art. All rights reserved.
-          </p>
+
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <p className="text-gray-500 text-sm">
+              © 2026 Henawy's Art. All rights reserved.
+            </p>
+
+            {/* 👇👇👇 رابط الدخول للموظفين هنا 👇👇👇 */}
+            <Link
+              to="/login"
+              className="text-xs text-gray-300 hover:text-primary transition-colors flex items-center gap-1"
+              title="Staff Access Only"
+            >
+              <Lock size={12} /> Staff Login
+            </Link>
+          </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
             <span>Built with support from</span>
             <Link
               to="/developer"
-              onClick={() => window.scrollTo(0, 0)} // 👈 ضيف السطر ده
+              onClick={() => window.scrollTo(0, 0)}
               className="text-primary font-bold hover:underline flex items-center gap-1"
             >
               Arsany zika <Heart size={14} className="fill-current" />
