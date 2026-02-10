@@ -538,59 +538,46 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Phone & Coupon */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                    <Phone size={16} className="text-primary" /> Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="01xxxxxxxxx"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
-                    required
-                  />
-                </div>
-
-                {!product.is_starting_price && (
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Tag size={16} className="text-primary" /> Coupon Code</label>
-                    {/* 👇 التعديل هنا: flex-col للموبايل و sm:flex-row للشاشات الأكبر */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        placeholder="SAVE10"
-                        className="flex-1 px-4 py-2 border border-gray-200 rounded-xl uppercase font-medium bg-white outline-none focus:border-primary"
-                        disabled={!!appliedCoupon}
-                      />
-                      {appliedCoupon ?
-                        <button
-                          type="button"
-                          onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }}
-                          // 👇 التعديل هنا: w-full للموبايل و sm:w-auto للشاشات الأكبر
-                          className="w-full sm:w-auto bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors"
-                        >
-                          Remove
-                        </button> :
-                        <button
-                          type="button"
-                          onClick={handleApplyCoupon}
-                          disabled={couponLoading || !couponCode}
-                          // 👇 التعديل هنا: w-full للموبايل و sm:w-auto للشاشات الأكبر
-                          className="w-full sm:w-auto bg-gray-800 text-white px-5 py-2 rounded-xl font-bold text-sm disabled:opacity-50 hover:bg-gray-900 transition-colors"
-                        >
-                          {couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}
-                        </button>
-                      }
-                    </div>
-                    {couponMsg.text && <p className={`text-xs mt-2 font-bold flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
-                  </div>
-                )}
+              {/* Phone Section - مفصول لوحده لضمان الظهور */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                  <Phone size={16} className="text-primary" /> Phone Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="01xxxxxxxxx"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
+                  required
+                />
               </div>
+
+              {/* Coupon Section - مفصول لوحده */}
+              {!product.is_starting_price && (
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                    <Tag size={16} className="text-primary" /> Coupon Code
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="SAVE10"
+                      className="flex-1 px-4 py-2 border border-gray-200 rounded-xl uppercase font-medium bg-white outline-none focus:border-primary"
+                      disabled={!!appliedCoupon}
+                    />
+                    {appliedCoupon ?
+                      <button type="button" onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }} className="w-full sm:w-auto bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm">Remove</button> :
+                      <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode} className="w-full sm:w-auto bg-gray-800 text-white px-5 py-2 rounded-xl font-bold text-sm disabled:opacity-50 transition-colors">
+                        {couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}
+                      </button>
+                    }
+                  </div>
+                  {couponMsg.text && <p className={`text-xs mt-2 font-bold flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
+                </div>
+              )}
 
               {/* Address Section */}
               <div className="space-y-4">
