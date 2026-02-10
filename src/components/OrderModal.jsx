@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
 
-// 🎨 قائمة الألوان (دي ممكن تفضل ثابتة عادي لأنها مش بتتغير كتير)
+// 🎨 قائمة الألوان
 const COMMON_COLORS = [
   { hex: "#000000", name: "Black" }, { hex: "#FFFFFF", name: "White" }, { hex: "#808080", name: "Gray" },
   { hex: "#C0C0C0", name: "Silver" }, { hex: "#FF0000", name: "Red" }, { hex: "#800000", name: "Maroon" },
@@ -36,8 +36,8 @@ const getColorNameFromHex = (hex) => {
 const OrderModal = ({ isOpen, onClose, product }) => {
   // State Variables
   const [customerName, setCustomerName] = useState('')
-  const [governorate, setGovernorate] = useState('') // دي هتخزن اسم المحافظة المختارة
-  const [shippingRatesList, setShippingRatesList] = useState([]) // 👈 دي القائمة اللي هتيجي من الداتابيز
+  const [governorate, setGovernorate] = useState('')
+  const [shippingRatesList, setShippingRatesList] = useState([])
   const [shippingLoading, setShippingLoading] = useState(true)
 
   const [address, setAddress] = useState('')
@@ -66,17 +66,16 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // 1. حساب مصاريف الشحن بناءً على القائمة اللي جاية من الداتابيز
+  // حساب مصاريف الشحن
   const shippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
 
   useEffect(() => {
     if (isOpen) {
-      fetchShippingRates() // 👈 هات الأسعار أول ما المودال يفتح
+      fetchShippingRates()
       if (product) fetchAddons()
     }
 
     if (isOpen && product) {
-      // Reset Fields
       setSelections({})
       setSelectedFile(null)
       setCustomText('')
@@ -94,7 +93,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }, [product, isOpen])
 
-  // 2. دالة جلب أسعار الشحن من Supabase
   const fetchShippingRates = async () => {
     try {
       setShippingLoading(true)
@@ -125,7 +123,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     finally { setLoadingAddons(false) }
   }
 
-  // Coupon Logic 🎟️
+  // Coupon Logic
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true)
@@ -158,39 +156,75 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }
 
+  // 🔥 1. تصليح منطق الـ Radio Buttons
   const handleToggleAddon = (addon) => {
     setSelections(prev => {
       const newSelections = { ...prev }
+
       if (addon.ui_type === 'checkbox') {
+        // لو checkbox: يضيف أو يحذف عادي
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
+
       } else if (addon.ui_type === 'radio') {
-        if (newSelections[addon.id]) delete newSelections[addon.id]
-        else newSelections[addon.id] = addon
+        // لو radio: 
+        if (newSelections[addon.id]) {
+          // لو هو مختار أصلاً وداس عليه تاني -> الغيه (Toggle off)
+          delete newSelections[addon.id]
+        } else {
+          // لو مش مختار -> الغي أي راديو تاني واختاره هو
+          // (بيمسح أي حاجة تانية نوعها راديو عشان يضمن اختيار واحد بس)
+          Object.values(newSelections).forEach(selected => {
+            if (selected.ui_type === 'radio') {
+              delete newSelections[selected.id]
+            }
+          })
+          newSelections[addon.id] = addon
+        }
       }
       return newSelections
     })
   }
 
-  // Location Logic 📍 (معدلة لتختار من القائمة اللي جاية من الداتابيز)
+  // 🔥 2. تصليح منطق التحديد التلقائي للمحافظة
   const autoSelectGovernorate = (addressObj) => {
+    // لو مفيش بيانات أو القائمة لسه محملتش، ارجع
     if (!addressObj || shippingRatesList.length === 0) return;
 
-    const state = (addressObj.state || '').toLowerCase();
-    const city = (addressObj.city || addressObj.town || '').toLowerCase();
-    const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase();
+    // توحيد النصوص للمقارنة (كله حروف صغيرة)
+    const state = (addressObj.state || '').toLowerCase(); // المحافظة من جوجل
+    const city = (addressObj.city || addressObj.town || '').toLowerCase(); // المدينة
+    const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase(); // الحي
 
-    // بنحاول نلاقي محافظة في القائمة الاسم بتاعها موجود في العنوان اللي رجع
+    // منطق خاص للإسكندرية عشان تقسيماتها
+    if (state.includes('alexandria') || city.includes('alexandria')) {
+      // 1. ندور على العجمي
+      if (suburb.includes('agami') || city.includes('agami')) {
+        const agamiRate = shippingRatesList.find(r => r.governorate.includes('Agami'));
+        if (agamiRate) { setGovernorate(agamiRate.governorate); setGpsError(''); return; }
+      }
+      // 2. ندور على برج العرب
+      if (suburb.includes('borg') || city.includes('borg')) {
+        const borgRate = shippingRatesList.find(r => r.governorate.includes('Borg'));
+        if (borgRate) { setGovernorate(borgRate.governorate); setGpsError(''); return; }
+      }
+      // 3. الباقي يبقي Center
+      const centerRate = shippingRatesList.find(r => r.governorate.includes('Center') && r.governorate.includes('Alexandria'));
+      if (centerRate) { setGovernorate(centerRate.governorate); setGpsError(''); return; }
+    }
+
+    // منطق لباقي المحافظات (القاهرة، الجيزة، إلخ)
+    // بندور على محافظة في القائمة بتاعتنا يكون اسمها موجود جوه العنوان اللي رجع من جوجل
     const foundRate = shippingRatesList.find(rate => {
-      const govName = rate.governorate.toLowerCase();
-      return state.includes(govName) || city.includes(govName) || suburb.includes(govName);
+      const govName = rate.governorate.toLowerCase().replace('governorate', '').trim(); // نشيل كلمة governorate من المقارنة
+      return state.includes(govName) || city.includes(govName);
     });
 
     if (foundRate) {
       setGovernorate(foundRate.governorate);
       setGpsError('');
     } else {
-      setGpsError('Could not auto-detect city. Please select manually.');
+      setGpsError('Could not auto-match city to our list. Please select manually.');
     }
   }
 
@@ -198,27 +232,38 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     setIsLocating(true)
     setGpsError('')
     if (!navigator.geolocation) { alert("Geolocation is not supported"); setIsLocating(false); return; }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
         const mapsUrl = `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}`
         setLocationLink(mapsUrl)
+
         try {
+          // بنجيب تفاصيل العنوان من الإحداثيات
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
           const data = await response.json()
+
           if (data && data.display_name) {
             setAddress(data.display_name)
+            // 👇 هنا بنشغل دالة التحديد التلقائي
             if (data.address) autoSelectGovernorate(data.address);
           }
-        } catch (error) { console.error("Could not fetch address text", error) }
+        } catch (error) {
+          console.error("Could not fetch address text", error)
+        }
         setIsLocating(false)
       },
-      (error) => { console.error("Error:", error); alert("Could not get location."); setIsLocating(false); }
+      (error) => {
+        console.error("Error:", error);
+        alert("Could not get location. Check browser permissions.");
+        setIsLocating(false);
+      }
     )
   }
 
-  // Price Calculation Logic 💰
+  // Price Calculation Logic
   const calculateTotals = () => {
     if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
 
@@ -276,7 +321,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (error) { return null }
   }
 
-  // Submit & Dashboard Save 🚀
+  // Submit & Dashboard Save
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
@@ -292,7 +337,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (!uploadedImageUrl) { setIsUploading(false); return }
     }
 
-    // 2. Insert into Supabase Orders (For Dashboard)
+    // 2. Insert into Supabase Orders
     try {
       const { error: orderError } = await supabase.from('orders').insert([{
         customer_name: customerName,
@@ -512,7 +557,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               <hr className="border-gray-100" />
 
-              {/* Location & Name (الجزء المتعدل) */}
+              {/* Location & Name */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
@@ -523,7 +568,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Shipping Fee) *
                   </label>
-                  {/* 👇👇👇 قائمة المحافظات هنا بقت ديناميكية 👇👇👇 */}
                   <select
                     value={governorate}
                     onChange={e => setGovernorate(e.target.value)}
