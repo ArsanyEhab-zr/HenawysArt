@@ -147,9 +147,18 @@ const Users = () => {
                                         <tr key={user.id} className={`transition-colors ${isMe ? 'bg-blue-50/30' : 'hover:bg-gray-50/50'}`}>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-lg overflow-hidden">
-                                                        {/* عرض أول حرف أو أيقونة */}
-                                                        {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User size={20} />}
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-lg overflow-hidden border border-gray-200">
+                                                        {/* 👇 التعديل هنا: لو فيه صورة اعرضها، لو مفيش اعرض الحرف */}
+                                                        {user.avatar_url ? (
+                                                            <img
+                                                                src={user.avatar_url}
+                                                                alt={user.full_name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => { e.target.style.display = 'none' }} // لو الرابط بايظ اخفيه واعرض الحرف
+                                                            />
+                                                        ) : (
+                                                            user.full_name ? user.full_name.charAt(0).toUpperCase() : <User size={20} />
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-gray-800 flex items-center gap-2">
