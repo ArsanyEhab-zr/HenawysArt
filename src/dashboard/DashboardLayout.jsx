@@ -14,9 +14,10 @@ import {
 } from 'lucide-react'
 
 const DashboardLayout = () => {
-    const [isSidebarOpen, setSidebarOpen] = useState(false) // مقفولة ديفولت في الموبايل
+    const [isSidebarOpen, setSidebarOpen] = useState(false)
     const [userRole, setUserRole] = useState(null)
     const [userName, setUserName] = useState('')
+    const [userAvatar, setUserAvatar] = useState(null) // 👈 1. ضفنا حالة للصورة
     const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
     const location = useLocation()
@@ -31,9 +32,10 @@ const DashboardLayout = () => {
                     return
                 }
 
+                // 👇 2. ضفنا avatar_url في الـ select
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('role, full_name')
+                    .select('role, full_name, avatar_url')
                     .eq('id', user.id)
                     .single()
 
@@ -41,6 +43,7 @@ const DashboardLayout = () => {
 
                 setUserRole(data?.role)
                 setUserName(data?.full_name || 'Admin')
+                setUserAvatar(data?.avatar_url) // 👈 تخزين الصورة
             } catch (error) {
                 console.error('Error fetching profile:', error)
                 navigate('/login')
@@ -85,13 +88,13 @@ const DashboardLayout = () => {
             path: '/dashboard/users',
             icon: Users,
             label: 'Staff & Users',
-            roles: ['admin'] // للمدير فقط
+            roles: ['admin']
         },
         {
             path: '/dashboard/settings',
             icon: Settings,
             label: 'Settings',
-            roles: ['admin'] // للمدير فقط
+            roles: ['admin']
         },
     ]
 
@@ -104,7 +107,7 @@ const DashboardLayout = () => {
     return (
         <div className="min-h-screen bg-gray-50 flex">
 
-            {/* Overlay for Mobile (لما القائمة تفتح) */}
+            {/* Overlay for Mobile */}
             {isSidebarOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -131,14 +134,25 @@ const DashboardLayout = () => {
                         </button>
                     </div>
 
-                    {/* User Info Snippet */}
+                    {/* User Info Snippet (الجزء المعدل 🌟) */}
                     <div className="p-4 border-b border-gray-50 bg-gray-50/50">
                         <div className="flex items-center gap-3">
-                            <div className="bg-indigo-100 p-2 rounded-full text-indigo-600">
-                                <UserCircle size={24} />
+                            {/* 👇 هنا بنعرض الصورة لو موجودة، أو الأيقونة لو مفيش */}
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200">
+                                {userAvatar ? (
+                                    <img
+                                        src={userAvatar}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => e.target.style.display = 'none'} // حماية لو الرابط بايظ
+                                    />
+                                ) : (
+                                    <UserCircle size={24} className="text-indigo-600" />
+                                )}
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-gray-800">{userName}</p>
+
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-bold text-gray-800 truncate" title={userName}>{userName}</p>
                                 <p className="text-xs text-gray-500 uppercase tracking-wider">{userRole}</p>
                             </div>
                         </div>
@@ -147,12 +161,11 @@ const DashboardLayout = () => {
                     {/* Navigation Links */}
                     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                         {menuItems.map((item) => (
-                            // إظهار الرابط فقط لو الدور يسمح
                             (userRole && item.roles.includes(userRole)) && (
                                 <NavLink
                                     key={item.path}
                                     to={item.path}
-                                    end={item.path === '/dashboard'} // عشان ميفضلش منور مع الصفحات الفرعية
+                                    end={item.path === '/dashboard'}
                                     className={({ isActive }) => `
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium text-sm
                     ${isActive
@@ -190,12 +203,12 @@ const DashboardLayout = () => {
                         <Menu size={24} />
                     </button>
                     <span className="font-semibold text-gray-800">Dashboard</span>
-                    <div className="w-10"></div> {/* Spacer to center title */}
+                    <div className="w-10"></div>
                 </header>
 
                 {/* Page Content Scrollable Area */}
                 <div className="flex-1 overflow-auto p-4 lg:p-8">
-                    <Outlet /> {/* 👈 هنا الصفحات الفرعية (Orders, Users...) هتظهر */}
+                    <Outlet />
                 </div>
 
             </main>
