@@ -48,7 +48,7 @@ const About = () => {
               Behind the Art
             </h1>
             <p className="text-xl md:text-2xl text-text-light max-w-3xl mx-auto leading-relaxed font-light">
-              From a small desk to over <span className="text-primary font-bold">450 homes</span>. 
+              From a small desk to over <span className="text-primary font-bold">450 homes</span>.
               This is the story of Henawy's Art.
             </p>
           </motion.div>
@@ -65,11 +65,11 @@ const About = () => {
                 className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-center gap-4 hover:shadow-md transition-shadow"
               >
                 <div className="p-3 bg-primary/10 rounded-full text-primary">
-                   <stat.icon size={24} />
+                  <stat.icon size={24} />
                 </div>
                 <div className="text-left">
-                   <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
-                   <p className="text-sm text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+                  <p className="text-sm text-gray-500 uppercase tracking-wider">{stat.label}</p>
                 </div>
               </motion.div>
             ))}
@@ -81,7 +81,7 @@ const About = () => {
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            
+
             {/* Logo Evolution Visual */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -91,36 +91,40 @@ const About = () => {
               className="relative"
             >
               <div className="relative bg-white rounded-[3rem] p-8 shadow-xl border border-stone-100 overflow-hidden">
-                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-accent"></div>
-                 
-                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-                    {/* Old Logo Placeholder */}
-                                    <div className="text-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                                        {/* ضيفنا overflow-hidden عشان الصورة متخرجش بره الدايرة */}
-                                        <div className="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-400 overflow-hidden relative">
-                                            {/* 👇 كود الصورة الصح */}
-                                            <img 
-                                                src="/oldLogo.jpeg" 
-                                                alt="Old Logo" 
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <p className="text-sm text-gray-400">Where we started</p>
-                                    </div>
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-accent"></div>
 
-                    <ArrowRight className="text-primary hidden md:block" size={32} />
-                    <div className="md:hidden rotate-90 text-primary"><ArrowRight size={32} /></div>
-
-                    {/* New Logo Placeholder */}
-                    <div className="text-center transform scale-110">
-                       <div className="w-40 h-40 mx-auto bg-white rounded-full flex items-center justify-center mb-3 shadow-lg border-4 border-primary/20">
-                          <img src="/logo.png" alt="Henawy's Art New Logo" className="w-28 object-contain" />
-                       </div>
-                       <p className="text-sm text-primary font-bold">New Era (2026)</p>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                  {/* Old Logo Placeholder */}
+                  <div className="text-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                    <div className="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-3 border-2 border-dashed border-gray-400 overflow-hidden relative">
+                      <img
+                        src="/oldLogo.jpeg"
+                        alt="Old Logo"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                 </div>
+                    <p className="text-sm text-gray-400">Where we started</p>
+                  </div>
+
+                  <ArrowRight className="text-primary hidden md:block" size={32} />
+                  <div className="md:hidden rotate-90 text-primary"><ArrowRight size={32} /></div>
+
+                  {/* New Logo Placeholder (تم التعديل هنا ليكون دائري) */}
+                  <div className="text-center transform scale-110">
+                    {/* ضيفنا overflow-hidden عشان يقص الصورة دايرة */}
+                    <div className="w-40 h-40 mx-auto bg-white rounded-full flex items-center justify-center mb-3 shadow-lg border-4 border-primary/20 overflow-hidden">
+                      {/* غيرنا كلاسات الصورة لتملأ الدايرة */}
+                      <img
+                        src="/logo.png"
+                        alt="Henawy's Art New Logo"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-sm text-primary font-bold">New Era (2026)</p>
+                  </div>
+                </div>
               </div>
-              
+
               {/* Decorative elements */}
               <div className="absolute -z-10 top-10 -left-10 w-40 h-40 bg-accent/20 rounded-full blur-3xl"></div>
               <div className="absolute -z-10 bottom-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl"></div>
@@ -135,25 +139,25 @@ const About = () => {
               className="space-y-6"
             >
               <div className="inline-block px-4 py-1 bg-primary/10 text-primary rounded-full text-sm font-bold mb-2">
-                 Since 16/12/2023
+                Since 16/12/2023
               </div>
               <h2 className="text-4xl md:text-5xl font-script text-text mb-4">
                 Growing with Art
               </h2>
               <div className="space-y-4 text-text-light leading-relaxed text-lg">
                 <p>
-                  It all started on <span className="font-bold text-gray-800">December 16, 2023</span>. 
-                  Henawy's Art was born from a simple belief: that the most powerful stories 
+                  It all started on <span className="font-bold text-gray-800">December 16, 2023</span>.
+                  Henawy's Art was born from a simple belief: that the most powerful stories
                   are told through emotions, not faces.
                 </p>
                 <p>
-                  We started with a humble logo and a big dream. As our art evolved, so did our identity. 
-                  Our rebranding represents our growth from a small hobby into a professional studio 
+                  We started with a humble logo and a big dream. As our art evolved, so did our identity.
+                  Our rebranding represents our growth from a small hobby into a professional studio
                   trusted by hundreds.
                 </p>
                 <p>
-                  Today, after delivering over <span className="font-bold text-primary">450 orders</span>, 
-                  our mission remains the same: transforming natural wood slices into 
+                  Today, after delivering over <span className="font-bold text-primary">450 orders</span>,
+                  our mission remains the same: transforming natural wood slices into
                   timeless memories that speak the language of the heart.
                 </p>
               </div>
@@ -211,53 +215,52 @@ const About = () => {
       <section className="py-20 bg-[#fdfbf7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-             {/* Text */}
-             <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="text-center lg:text-left"
-              >
-                <h2 className="text-3xl md:text-4xl font-script text-text mb-6">
-                  Where Art Comes to Life
-                </h2>
-                <p className="text-lg text-text-light leading-relaxed mb-8">
-                  Our studio is a sanctuary of creativity, where natural light dances
-                  with wood grains and paints whisper stories yet to be told.
-                  Every piece begins here, in this space dedicated to preserving memories.
-                </p>
-                <div className="flex flex-wrap justify-center lg:justify-start gap-6">
-                  <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
-                    <Sparkles size={20} className="text-accent" />
-                    <span className="font-medium">Creative Studio</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
-                    <Heart size={20} className="text-primary" />
-                    <span className="font-medium">Made with Love</span>
-                  </div>
+            {/* Text */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center lg:text-left"
+            >
+              <h2 className="text-3xl md:text-4xl font-script text-text mb-6">
+                Where Art Comes to Life
+              </h2>
+              <p className="text-lg text-text-light leading-relaxed mb-8">
+                Our studio is a sanctuary of creativity, where natural light dances
+                with wood grains and paints whisper stories yet to be told.
+                Every piece begins here, in this space dedicated to preserving memories.
+              </p>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-6">
+                <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
+                  <Sparkles size={20} className="text-accent" />
+                  <span className="font-medium">Creative Studio</span>
                 </div>
-              </motion.div>
+                <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-sm text-gray-700">
+                  <Heart size={20} className="text-primary" />
+                  <span className="font-medium">Made with Love</span>
+                </div>
+              </div>
+            </motion.div>
 
-{/* Workspace Visual */}
-<motion.div
-  initial={{ opacity: 0, x: 20 }}
-  whileInView={{ opacity: 1, x: 0 }}
-  viewport={{ once: true }}
-  transition={{ duration: 0.6, delay: 0.2 }}
-  className="relative"
->
-  <div className="aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white transform rotate-2 hover:rotate-0 transition-transform duration-500">
-      {/* 👇 التعديل هنا: ضيفنا slash والستايل عشان تملأ المكان */}
-      <img 
-        src="/Picsart_26-02-04_10-56-04-378.png" 
-        alt="Our Workspace" 
-        className="w-full h-full object-cover"
-      />
-  </div>
-  {/* ديكور بسيط */}
-  <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary rounded-full opacity-10"></div>
-</motion.div>
+            {/* Workspace Visual */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative"
+            >
+              <div className="aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                <img
+                  src="/Picsart_26-02-04_10-56-04-378.png"
+                  alt="Our Workspace"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {/* ديكور بسيط */}
+              <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary rounded-full opacity-10"></div>
+            </motion.div>
           </div>
         </div>
       </section>
