@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-// أقسام الموقع بتاعتك (عشان تختار منها)
 const CATEGORIES = [
     { id: 'woodslices', name: 'Wood Slices' },
     { id: 'phonecases', name: 'Phone Cases' },
@@ -20,6 +19,7 @@ const Products = () => {
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [error, setError] = useState(null) // عشان نعرف لو فيه ايرور
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -42,7 +42,6 @@ const Products = () => {
         fetchProducts()
     }, [])
 
-    // 1. جلب المنتجات
     const fetchProducts = async () => {
         try {
             setLoading(true)
@@ -52,30 +51,29 @@ const Products = () => {
                 .order('created_at', { ascending: false })
 
             if (error) throw error
-            setProducts(data)
+            setProducts(data || []) // تأكد إنها مصفوفة حتى لو فاضية
         } catch (error) {
+            console.error(error)
+            setError(error.message)
             toast.error('Error fetching products')
         } finally {
             setLoading(false)
         }
     }
 
-    // 2. فتح المودال (للإضافة أو التعديل)
     const openModal = (product = null) => {
         if (product) {
-            // وضع التعديل
             setEditingProduct(product)
             setFormData({
-                title: product.title,
-                price: product.price,
-                category: product.category,
+                title: product.title || '',
+                price: product.price || '',
+                category: product.category || 'woodslices',
                 description: product.description || '',
-                image_url: product.image_url,
-                is_new: product.is_new
+                image_url: product.image_url || '',
+                is_new: product.is_new || false
             })
-            setImagePreview(product.image_url)
+            setImagePreview(product.image_url || '')
         } else {
-            // وضع الإضافة (تصفير الفورم)
             setEditingProduct(null)
             setFormData({
                 title: '',
@@ -91,24 +89,23 @@ const Products = () => {
         setIsModalOpen(true)
     }
 
-    // 3. رفع الصورة
     const handleImageChange = (e) => {
         const file = e.target.files[0]
         if (file) {
             setImageFile(file)
-            setImagePreview(URL.createObjectURL(file)) // عرض مؤقت
+            setImagePreview(URL.createObjectURL(file))
         }
     }
 
     const uploadImage = async () => {
-        if (!imageFile) return formData.image_url // لو مغيرش الصورة، رجع القديمة
+        if (!imageFile) return formData.image_url
 
         const fileExt = imageFile.name.split('.').pop()
         const fileName = `${Date.now()}.${fileExt}`
         const filePath = `${fileName}`
 
         const { error: uploadError } = await supabase.storage
-            .from('product-images') // ⚠️ تأكد إنك عملت الباكت ده في Supabase
+            .from('product-images')
             .upload(filePath, imageFile)
 
         if (uploadError) throw uploadError
@@ -120,7 +117,6 @@ const Products = () => {
         return data.publicUrl
     }
 
-    // 4. الحفظ (Create / Update)
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!formData.title || !formData.price) return toast.error("Title and Price are required")
@@ -139,7 +135,6 @@ const Products = () => {
             }
 
             if (editingProduct) {
-                // Update
                 const { error } = await supabase
                     .from('products')
                     .update(productData)
@@ -147,7 +142,6 @@ const Products = () => {
                 if (error) throw error
                 toast.success('Product updated successfully')
             } else {
-                // Create
                 const { error } = await supabase
                     .from('products')
                     .insert([productData])
@@ -156,7 +150,7 @@ const Products = () => {
             }
 
             setIsModalOpen(false)
-            fetchProducts() // تحديث الجدول
+            fetchProducts()
 
         } catch (error) {
             console.error(error)
@@ -166,7 +160,6 @@ const Products = () => {
         }
     }
 
-    // 5. الحذف
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this product?")) return
 
@@ -185,16 +178,16 @@ const Products = () => {
         }
     }
 
-    // فلتر البحث
     const filteredProducts = products.filter(p =>
-        p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.category.toLowerCase().includes(search.toLowerCase())
+        (p.title || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(search.toLowerCase())
     )
+
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>
 
     return (
         <div className="space-y-6">
 
-            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Products Inventory</h1>
@@ -210,7 +203,6 @@ const Products = () => {
                 </button>
             </div>
 
-            {/* Search Bar */}
             <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
@@ -222,7 +214,6 @@ const Products = () => {
                 />
             </div>
 
-            {/* Products Grid */}
             {loading ? (
                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" size={40} /></div>
             ) : (
@@ -230,19 +221,18 @@ const Products = () => {
                     {filteredProducts.map(product => (
                         <div key={product.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
 
-                            {/* Image Area */}
                             <div className="relative aspect-square bg-gray-50">
                                 <img
                                     src={product.image_url || 'https://via.placeholder.com/300'}
                                     alt={product.title}
                                     className="w-full h-full object-cover"
+                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=No+Image' }} // 👈 حماية ضد الصور المكسورة
                                 />
                                 {product.is_new && (
                                     <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm">
                                         NEW
                                     </span>
                                 )}
-                                {/* Hover Actions */}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                     <button
                                         onClick={() => openModal(product)}
@@ -259,7 +249,6 @@ const Products = () => {
                                 </div>
                             </div>
 
-                            {/* Details */}
                             <div className="p-4">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-gray-800 line-clamp-1" title={product.title}>{product.title}</h3>
@@ -269,7 +258,7 @@ const Products = () => {
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200 uppercase">
                                         {product.category}
                                     </span>
-                                    {product.sold_count > 0 && (
+                                    {(product.sold_count > 0) && (
                                         <span className="text-xs text-green-600 font-medium">
                                             {product.sold_count} sold
                                         </span>
@@ -281,15 +270,18 @@ const Products = () => {
                             </div>
                         </div>
                     ))}
+                    {filteredProducts.length === 0 && !loading && (
+                        <div className="col-span-full text-center py-12 text-gray-400">
+                            No products found. Start adding some!
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* ================= MODAL ================= */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
 
-                        {/* Modal Header */}
                         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-800">
                                 {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -299,10 +291,8 @@ const Products = () => {
                             </button>
                         </div>
 
-                        {/* Modal Form */}
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-                            {/* Image Upload */}
                             <div className="flex justify-center">
                                 <div className="relative group cursor-pointer w-full h-48 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden hover:border-primary hover:bg-primary/5 transition-all">
                                     {imagePreview ? (
@@ -314,14 +304,9 @@ const Products = () => {
                                         </>
                                     )}
                                     <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                    {/* Overlay on hover */}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold transition-opacity">
-                                        Change Image
-                                    </div>
                                 </div>
                             </div>
 
-                            {/* Title & Price */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
@@ -353,7 +338,6 @@ const Products = () => {
                                 </div>
                             </div>
 
-                            {/* Category */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                 <select
@@ -367,7 +351,6 @@ const Products = () => {
                                 </select>
                             </div>
 
-                            {/* Description */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
                                 <textarea
@@ -378,7 +361,6 @@ const Products = () => {
                                 />
                             </div>
 
-                            {/* Toggle: New Arrival */}
                             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <input
                                     type="checkbox"
@@ -392,7 +374,6 @@ const Products = () => {
                                 </label>
                             </div>
 
-                            {/* Submit Button */}
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
