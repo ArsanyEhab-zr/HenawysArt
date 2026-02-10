@@ -4,17 +4,7 @@ import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
 
-// 1. قائمة المحافظات
-const GOVERNORATES_LIST = [
-  "Cairo", "Giza",
-  "Alexandria (Center)", "Alexandria (Agami)", "Alexandria (Borg El Arab)",
-  "Dakahlia", "Beheira", "Fayoum", "Gharbiya", "Ismailia", "Monufia",
-  "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut",
-  "Beni Suef", "Port Said", "Damietta", "Sharkia", "South Sinai",
-  "Kafr El Sheikh", "Matrouh", "Luxor", "Qena", "North Sinai", "Sohag", "Red Sea"
-]
-
-// 2. قائمة الألوان
+// 🎨 قائمة الألوان (دي ممكن تفضل ثابتة عادي لأنها مش بتتغير كتير)
 const COMMON_COLORS = [
   { hex: "#000000", name: "Black" }, { hex: "#FFFFFF", name: "White" }, { hex: "#808080", name: "Gray" },
   { hex: "#C0C0C0", name: "Silver" }, { hex: "#FF0000", name: "Red" }, { hex: "#800000", name: "Maroon" },
@@ -27,7 +17,6 @@ const COMMON_COLORS = [
   { hex: "#E6E6FA", name: "Lavender" }
 ];
 
-// دالة ترجمة اللون
 const getColorNameFromHex = (hex) => {
   const r = parseInt(hex.substr(1, 2), 16);
   const g = parseInt(hex.substr(3, 2), 16);
@@ -44,21 +33,13 @@ const getColorNameFromHex = (hex) => {
   return closestColor;
 };
 
-// دالة الشحن
-const getShippingFee = (gov) => {
-  if (!gov) return 0
-  if (gov === "Alexandria (Center)") return 50
-  if (gov === "Alexandria (Agami)") return 55
-  if (gov === "Alexandria (Borg El Arab)") return 60
-  if (gov === "Cairo" || gov === "Giza") return 80
-  if (["Port Said", "Ismailia", "Suez", "Dakahlia", "Beheira", "Gharbiya", "Monufia", "Qalyubia", "Damietta", "Sharkia", "Kafr El Sheikh"].includes(gov)) return 90
-  return 100
-}
-
 const OrderModal = ({ isOpen, onClose, product }) => {
   // State Variables
   const [customerName, setCustomerName] = useState('')
-  const [governorate, setGovernorate] = useState('')
+  const [governorate, setGovernorate] = useState('') // دي هتخزن اسم المحافظة المختارة
+  const [shippingRatesList, setShippingRatesList] = useState([]) // 👈 دي القائمة اللي هتيجي من الداتابيز
+  const [shippingLoading, setShippingLoading] = useState(true)
+
   const [address, setAddress] = useState('')
   const [customText, setCustomText] = useState('')
   const [bgColor, setBgColor] = useState('')
@@ -75,7 +56,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [selections, setSelections] = useState({})
 
-  // Coupon States (NEW 🎟️)
+  // Coupon States
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -85,12 +66,17 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  const shippingFee = getShippingFee(governorate)
+  // 1. حساب مصاريف الشحن بناءً على القائمة اللي جاية من الداتابيز
+  const shippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
 
-  // Reset Logic
   useEffect(() => {
+    if (isOpen) {
+      fetchShippingRates() // 👈 هات الأسعار أول ما المودال يفتح
+      if (product) fetchAddons()
+    }
+
     if (isOpen && product) {
-      fetchAddons()
+      // Reset Fields
       setSelections({})
       setSelectedFile(null)
       setCustomText('')
@@ -107,6 +93,24 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setCouponMsg({ type: '', text: '' })
     }
   }, [product, isOpen])
+
+  // 2. دالة جلب أسعار الشحن من Supabase
+  const fetchShippingRates = async () => {
+    try {
+      setShippingLoading(true)
+      const { data, error } = await supabase
+        .from('shipping_rates')
+        .select('*')
+        .order('governorate', { ascending: true })
+
+      if (error) throw error
+      setShippingRatesList(data || [])
+    } catch (error) {
+      console.error("Error fetching rates:", error)
+    } finally {
+      setShippingLoading(false)
+    }
+  }
 
   const fetchAddons = async () => {
     setLoadingAddons(true)
@@ -168,47 +172,26 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // Location Logic 📍
+  // Location Logic 📍 (معدلة لتختار من القائمة اللي جاية من الداتابيز)
   const autoSelectGovernorate = (addressObj) => {
-    if (!addressObj) return;
+    if (!addressObj || shippingRatesList.length === 0) return;
+
     const state = (addressObj.state || '').toLowerCase();
     const city = (addressObj.city || addressObj.town || '').toLowerCase();
     const suburb = (addressObj.suburb || addressObj.neighbourhood || '').toLowerCase();
-    let detectedGov = '';
 
-    // Logic for detection
-    if (state.includes('alexandria') || city.includes('alexandria')) {
-      if (suburb.includes('agami') || city.includes('agami')) detectedGov = "Alexandria (Agami)";
-      else if (city.includes('borg') || suburb.includes('borg')) detectedGov = "Alexandria (Borg El Arab)";
-      else detectedGov = "Alexandria (Center)";
+    // بنحاول نلاقي محافظة في القائمة الاسم بتاعها موجود في العنوان اللي رجع
+    const foundRate = shippingRatesList.find(rate => {
+      const govName = rate.governorate.toLowerCase();
+      return state.includes(govName) || city.includes(govName) || suburb.includes(govName);
+    });
+
+    if (foundRate) {
+      setGovernorate(foundRate.governorate);
+      setGpsError('');
+    } else {
+      setGpsError('Could not auto-detect city. Please select manually.');
     }
-    else if (state.includes('cairo') || city.includes('cairo')) detectedGov = "Cairo";
-    else if (state.includes('giza') || city.includes('giza')) detectedGov = "Giza";
-    else if (state.includes('dakahlia')) detectedGov = "Dakahlia";
-    else if (state.includes('beheira')) detectedGov = "Beheira";
-    else if (state.includes('fayoum')) detectedGov = "Fayoum";
-    else if (state.includes('gharbiya')) detectedGov = "Gharbiya";
-    else if (state.includes('ismailia')) detectedGov = "Ismailia";
-    else if (state.includes('monufia')) detectedGov = "Monufia";
-    else if (state.includes('minya')) detectedGov = "Minya";
-    else if (state.includes('qalyubia')) detectedGov = "Qalyubia";
-    else if (state.includes('suez')) detectedGov = "Suez";
-    else if (state.includes('aswan')) detectedGov = "Aswan";
-    else if (state.includes('assiut')) detectedGov = "Assiut";
-    else if (state.includes('beni suef')) detectedGov = "Beni Suef";
-    else if (state.includes('port said')) detectedGov = "Port Said";
-    else if (state.includes('damietta')) detectedGov = "Damietta";
-    else if (state.includes('sharkia')) detectedGov = "Sharkia";
-    else if (state.includes('sinai')) detectedGov = state.includes('south') ? "South Sinai" : "North Sinai";
-    else if (state.includes('kafr')) detectedGov = "Kafr El Sheikh";
-    else if (state.includes('matrouh')) detectedGov = "Matrouh";
-    else if (state.includes('luxor')) detectedGov = "Luxor";
-    else if (state.includes('qena')) detectedGov = "Qena";
-    else if (state.includes('sohag')) detectedGov = "Sohag";
-    else if (state.includes('red sea')) detectedGov = "Red Sea";
-
-    if (detectedGov) { setGovernorate(detectedGov); setGpsError(''); }
-    else { setGpsError('Could not auto-detect city. Please select manually.'); }
   }
 
   const handleGetLocation = () => {
@@ -484,7 +467,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Coupons Section (New) */}
+              {/* Coupons Section */}
               {!product.is_starting_price && (
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
@@ -529,7 +512,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               <hr className="border-gray-100" />
 
-              {/* Location & Name */}
+              {/* Location & Name (الجزء المتعدل) */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
@@ -540,16 +523,18 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Shipping Fee) *
                   </label>
+                  {/* 👇👇👇 قائمة المحافظات هنا بقت ديناميكية 👇👇👇 */}
                   <select
                     value={governorate}
                     onChange={e => setGovernorate(e.target.value)}
                     className={`w-full px-4 py-3 border border-gray-200 rounded-lg bg-white transition-all ${gpsError ? 'border-yellow-400' : ''}`}
                     required
+                    disabled={shippingLoading}
                   >
-                    <option value="">Select Governorate</option>
-                    {GOVERNORATES_LIST.map(gov => (
-                      <option key={gov} value={gov}>
-                        {gov} {getShippingFee(gov) > 0 ? `(+${getShippingFee(gov)} EGP)` : ''}
+                    <option value="">{shippingLoading ? "Loading rates..." : "Select Governorate"}</option>
+                    {shippingRatesList.map(rate => (
+                      <option key={rate.id} value={rate.governorate}>
+                        {rate.governorate} (+{rate.fee} EGP)
                       </option>
                     ))}
                   </select>
