@@ -614,20 +614,29 @@ const OrderModal = ({ isOpen, onClose, product }) => {
               </div>
 
               {/* Info Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Delivery Card */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertCircle size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-blue-800 uppercase">Delivery</span>
+                    <span className="text-xs font-bold text-blue-800 uppercase">Delivery Time</span>
                   </div>
-                  <p className="text-xs text-blue-700">10-14 Days</p>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    Order takes <span className="font-bold">10 to 14 days</span> to be ready.
+                  </p>
                 </div>
+
+                {/* Payment Card */}
                 <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Wallet size={16} className="text-purple-600" />
-                    <span className="text-xs font-bold text-purple-800 uppercase">Payment</span>
+                    <span className="text-xs font-bold text-purple-800 uppercase">Payment Policy</span>
                   </div>
-                  <p className="text-xs text-purple-700">50% Deposit (Wallet)</p>
+                  <p className="text-xs text-purple-700 font-medium">50% Deposit via Wallet.</p>
+                  {/* 👇 رجعتلك التحذير هنا 👇 */}
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase flex items-center gap-1">
+                    🚫 No Instapay
+                  </p>
                 </div>
               </div>
 
