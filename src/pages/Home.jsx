@@ -1,152 +1,156 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowRight, Loader2, Sparkles, Star } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import ProductCard from '../components/ProductCard'
-import OrderModal from '../components/OrderModal' // 👈 استيراد المودال
+import OrderModal from '../components/OrderModal'
 import { Link } from 'react-router-dom'
-import { useState, useEffect } from 'react' // 👈 هوكات رياكت
-import { supabase } from '../supabaseClient' // 👈 استيراد سوبا بيز
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 
 const Home = () => {
-  // 1. States لتخزين المنتجات والتحميل والمودال
   const [topProducts, setTopProducts] = useState([])
+  const [newArrivals, setNewArrivals] = useState([]) // 👈 حالة المنتجات الجديدة
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // 2. جلب المنتجات الأكثر مبيعاً عند فتح الصفحة
   useEffect(() => {
-    fetchTopSellers()
+    fetchAllData()
+
+    // الاستماع اللحظي عشان لو المخزون اتغير والعميل فاتح الهوم
+    const channel = supabase
+      .channel('home-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, (payload) => {
+        setTopProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p))
+        setNewArrivals(prev => prev.map(p => p.id === payload.new.id ? payload.new : p))
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [])
 
-  const fetchTopSellers = async () => {
+  const fetchAllData = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+
+      // 1. جلب الأكثر مبيعاً
+      const { data: top } = await supabase
         .from('products')
         .select('*')
-        .order('sold_count', { ascending: false }) // ترتيب تنازلي حسب عدد مرات البيع
-        .limit(4) // هات أول 4 فقط
+        .order('sold_count', { ascending: false })
+        .limit(4)
 
-      if (error) throw error
-      setTopProducts(data || [])
+      // 2. جلب الجديد (اللي أنت اخترته يدوياً)
+      const { data: news } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_new_arrival', true) // 👈 السر هنا
+        .limit(4)
+
+      setTopProducts(top || [])
+      setNewArrivals(news || [])
     } catch (error) {
-      console.error('Error fetching top sellers:', error)
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  // دالة فتح المودال عند الضغط على منتج
   const handleOrderClick = (product) => {
     setSelectedProduct(product)
     setIsModalOpen(true)
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       <Navbar />
       <Hero />
 
-      {/* Highlights Section */}
-      <section className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Header */}
+      {/* ✨ Section: New Arrivals (الجزء اللي بيشد الناس) ✨ */}
+      <section className="py-20 bg-gradient-to-b from-white to-gray-50/50">
+        <div className="max-w-7xl mx-auto px-4">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 mb-8"
           >
-            <h2 className="text-4xl md:text-5xl font-script text-text mb-4">
-              Top Sellers
-            </h2>
-            <p className="text-lg text-text-light max-w-2xl mx-auto">
-              Discover our most loved pieces, chosen by our customers for their unique stories and craftsmanship.
-            </p>
+            <div className="bg-accent/20 p-2 rounded-lg text-accent">
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-script text-text">New Arrivals</h2>
+              <p className="text-sm text-text-light uppercase tracking-widest font-bold">Latest creations from the studio</p>
+            </div>
           </motion.div>
 
-          {/* Featured Products Grid */}
           {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="animate-spin text-primary w-10 h-10" />
-            </div>
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-              {topProducts.length > 0 ? (
-                topProducts.map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                  >
-                    <ProductCard
-                      product={product}
-                      onOrderClick={() => handleOrderClick(product)} // 👈 فتح المودال بدل اللينك
-                      isCategoryPage={true}
-                    />
-                  </motion.div>
-                ))
-              ) : (
-                <p className="text-center col-span-full text-gray-500">No top sellers yet.</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {newArrivals.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  {/* استخدمنا نفس كرت المنتج عشان التناسق */}
+                  <ProductCard product={product} onOrderClick={() => handleOrderClick(product)} />
+                </motion.div>
+              ))}
             </div>
           )}
-
-          {/* CTA to Shop */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-center"
-          >
-            <Link to="/shop">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="inline-flex items-center gap-3 bg-primary text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-              >
-                Explore Full Collection
-                <ArrowRight size={20} />
-              </motion.div>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
-      {/* About Section
-      <section id="about" className="py-20 bg-gray-50">
+      {/* 🔥 Section: Top Sellers 🔥 */}
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-3xl mx-auto"
+            className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-script text-text mb-6">
-              About Henawy's Art
+            <span className="inline-block px-4 py-1.5 bg-primary/5 text-primary text-xs font-bold rounded-full mb-4 uppercase tracking-[0.2em]">
+              Community Favorites
+            </span>
+            <h2 className="text-4xl md:text-5xl font-script text-text mb-4">
+              Top Sellers
             </h2>
-            <p className="text-lg text-text-light leading-relaxed">
-              We specialize in creating beautiful, sentimental artwork on natural
-              wood slices using a unique faceless art style. Each piece is
-              handcrafted with care, transforming your precious memories into
-              timeless art. From custom paintings to medals and frames, we bring
-              your stories to life.
-            </p>
+            <div className="w-24 h-1 bg-accent mx-auto rounded-full" />
           </motion.div>
-        </div>
-      </section> */}
 
-      {/* Order Modal Component */}
-      <OrderModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        product={selectedProduct} 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+            {!loading && topProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onOrderClick={() => handleOrderClick(product)}
+              />
+            ))}
+          </div>
+
+          {/* CTA Button */}
+          <div className="text-center">
+            <Link to="/shop">
+              <motion.button
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gray-900 text-white px-10 py-4 rounded-full font-bold shadow-xl hover:shadow-primary/20 flex items-center gap-3 mx-auto transition-all"
+              >
+                Explore Full Gallery
+                <ArrowRight size={20} />
+              </motion.button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <OrderModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProduct}
       />
     </div>
   )
