@@ -67,43 +67,6 @@ const Home = () => {
       <Navbar />
       <Hero />
 
-      {/* ✨ Section: New Arrivals (الجزء اللي بيشد الناس) ✨ */}
-      <section className="py-20 bg-gradient-to-b from-white to-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 mb-8"
-          >
-            <div className="bg-accent/20 p-2 rounded-lg text-accent">
-              <Sparkles size={24} />
-            </div>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-script text-text">New Arrivals</h2>
-              <p className="text-sm text-text-light uppercase tracking-widest font-bold">Latest creations from the studio</p>
-            </div>
-          </motion.div>
-
-          {loading ? (
-            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {newArrivals.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  {/* استخدمنا نفس كرت المنتج عشان التناسق */}
-                  <ProductCard product={product} onOrderClick={() => handleOrderClick(product)} />
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* 🔥 Section: Top Sellers 🔥 */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -130,6 +93,79 @@ const Home = () => {
               />
             ))}
           </div>
+
+
+          {/* ✨ Section: New Arrivals (الجزء اللي بيشد الناس) ✨ */}
+
+          <section className="py-20 bg-gradient-to-b from-white to-gray-50/50">
+
+            <div className="max-w-7xl mx-auto px-4">
+
+              <motion.div
+
+                initial={{ opacity: 0, x: -20 }}
+
+                whileInView={{ opacity: 1, x: 0 }}
+
+                className="flex items-center gap-3 mb-8"
+
+              >
+
+                <div className="bg-accent/20 p-2 rounded-lg text-accent">
+
+                  <Sparkles size={24} />
+
+                </div>
+
+                <div>
+
+                  <h2 className="text-3xl md:text-4xl font-script text-text">New Arrivals</h2>
+
+                  <p className="text-sm text-text-light uppercase tracking-widest font-bold">Latest creations from the studio</p>
+
+                </div>
+
+              </motion.div>
+
+
+
+              {loading ? (
+
+                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
+
+              ) : (
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+                  {newArrivals.map((product, index) => (
+
+                    <motion.div
+
+                      key={product.id}
+
+                      initial={{ opacity: 0, scale: 0.9 }}
+
+                      whileInView={{ opacity: 1, scale: 1 }}
+
+                      transition={{ delay: index * 0.1 }}
+
+                    >
+
+                      {/* استخدمنا نفس كرت المنتج عشان التناسق */}
+
+                      <ProductCard product={product} onOrderClick={() => handleOrderClick(product)} />
+
+                    </motion.div>
+
+                  ))}
+
+                </div>
+
+              )}
+
+            </div>
+
+          </section>
 
           {/* CTA Button */}
           <div className="text-center">

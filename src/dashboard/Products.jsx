@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
     Plus, Search, Edit, Trash2, X,
-    Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle
+    Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle, Sparkles
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -26,7 +26,8 @@ const Products = () => {
         category: '',
         description: '',
         image_url: '',
-        is_starting_price: false
+        is_starting_price: false,
+        is_new_arrival: false // 👈 الحالة الجديدة للتحكم في الظهور
     })
     const [imageFile, setImageFile] = useState(null)
     const [imagePreview, setImagePreview] = useState('')
@@ -34,20 +35,18 @@ const Products = () => {
     useEffect(() => {
         fetchData()
 
-        // 👇👇👇 إضافة الاستماع اللحظي لتغييرات المخزون 👇👇👇
+        // Realtime Subscription
         const channel = supabase
             .channel('realtime-products-list')
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'products' },
                 (payload) => {
-                    // لو حصل تعديل (مثلاً المخزون نقص)، نحدث المنتج ده بس في الـ State
                     if (payload.eventType === 'UPDATE') {
                         setProducts((prev) => prev.map((product) =>
                             product.id === payload.new.id ? payload.new : product
                         ))
                     }
-                    // لو منتج جديد انضاف أو اتمسح، نعيد تحميل القائمة للأمان
                     else {
                         fetchData()
                     }
@@ -64,7 +63,7 @@ const Products = () => {
         try {
             setLoading(true)
 
-            // 1. جلب المنتجات
+            // 1. Get Products
             const { data: productsData, error: productsError } = await supabase
                 .from('products')
                 .select('*')
@@ -73,7 +72,7 @@ const Products = () => {
             if (productsError) throw productsError
             setProducts(productsData || [])
 
-            // 2. جلب الأقسام
+            // 2. Get Categories
             const { data: categoriesData, error: categoriesError } = await supabase
                 .from('categories')
                 .select('*')
@@ -104,7 +103,8 @@ const Products = () => {
                 category: product.category || defaultCategory,
                 description: product.description || '',
                 image_url: product.image_url || '',
-                is_starting_price: product.is_starting_price || false
+                is_starting_price: product.is_starting_price || false,
+                is_new_arrival: product.is_new_arrival || false // 👈 تحميل الحالة الحالية
             })
             setImagePreview(product.image_url || '')
         } else {
@@ -116,7 +116,8 @@ const Products = () => {
                 category: defaultCategory,
                 description: '',
                 image_url: '',
-                is_starting_price: false
+                is_starting_price: false,
+                is_new_arrival: false // 👈 القيمة الافتراضية
             })
             setImagePreview('')
         }
@@ -173,7 +174,8 @@ const Products = () => {
                 category: formData.category,
                 description: formData.description,
                 image_url: imageUrl || formData.image_url,
-                is_starting_price: formData.is_starting_price
+                is_starting_price: formData.is_starting_price,
+                is_new_arrival: formData.is_new_arrival // 👈 إرسال الحالة للداتابيز
             }
 
             if (editingProduct) {
@@ -192,7 +194,6 @@ const Products = () => {
             }
 
             setIsModalOpen(false)
-            // fetchData() // مش محتاجين نستدعيها هنا لأن الـ Realtime هيسمع التغيير ويحدث لوحده
 
         } catch (error) {
             console.error(error)
@@ -212,8 +213,6 @@ const Products = () => {
                 .eq('id', id)
 
             if (error) throw error
-
-            // setProducts(products.filter(p => p.id !== id)) // الـ Realtime هيقوم بالواجب
             toast.success('Product deleted')
         } catch (error) {
             toast.error('Error deleting product')
@@ -268,7 +267,7 @@ const Products = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map(product => (
-                        <div key={product.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
+                        <div key={product.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative">
 
                             {/* Product Image */}
                             <div className="relative aspect-square bg-gray-50">
@@ -290,7 +289,14 @@ const Products = () => {
                                     </span>
                                 ) : null}
 
-                                {product.is_starting_price && (
+                                {/* 👇 شارة "New Arrival" في الكارت عشان تعرفها */}
+                                {product.is_new_arrival && (
+                                    <span className="absolute top-2 left-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
+                                        <Sparkles size={10} /> New Arrival
+                                    </span>
+                                )}
+
+                                {product.is_starting_price && !product.is_new_arrival && (
                                     <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm">
                                         Starts From
                                     </span>
@@ -310,8 +316,6 @@ const Products = () => {
                                 </div>
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200 uppercase">{product.category}</span>
-
-                                    {/* Stock Display */}
                                     <span className={`text-xs font-bold flex items-center gap-1 ${product.stock > 0 ? 'text-gray-500' : 'text-red-500'}`}>
                                         <Box size={12} /> {product.stock > 0 ? `${product.stock} in stock` : 'Unavailable'}
                                     </span>
@@ -395,17 +399,35 @@ const Products = () => {
                                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 resize-none h-20" placeholder="Details about the product..." />
                             </div>
 
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                <input
-                                    type="checkbox"
-                                    id="isStarting"
-                                    checked={formData.is_starting_price}
-                                    onChange={(e) => setFormData({ ...formData, is_starting_price: e.target.checked })}
-                                    className="w-5 h-5 text-primary rounded focus:ring-primary"
-                                />
-                                <label htmlFor="isStarting" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
-                                    Is this a "Starting Price"? (Price varies)
-                                </label>
+                            {/* Checkboxes Area */}
+                            <div className="space-y-3">
+                                {/* Starting Price Checkbox */}
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        id="isStarting"
+                                        checked={formData.is_starting_price}
+                                        onChange={(e) => setFormData({ ...formData, is_starting_price: e.target.checked })}
+                                        className="w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer"
+                                    />
+                                    <label htmlFor="isStarting" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                                        Is this a "Starting Price"? (Price varies)
+                                    </label>
+                                </div>
+
+                                {/* 👇👇👇 New Arrival Checkbox (التحكم الجديد) 👇👇👇 */}
+                                <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                    <input
+                                        type="checkbox"
+                                        id="isNewArrival"
+                                        checked={formData.is_new_arrival}
+                                        onChange={(e) => setFormData({ ...formData, is_new_arrival: e.target.checked })}
+                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                                    />
+                                    <label htmlFor="isNewArrival" className="text-sm font-bold text-purple-800 cursor-pointer select-none flex items-center gap-2">
+                                        <Sparkles size={16} /> Mark as "New Arrival" (Shows on Home)
+                                    </label>
+                                </div>
                             </div>
 
                             <button type="submit" disabled={isSubmitting} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
