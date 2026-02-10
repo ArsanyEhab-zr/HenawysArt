@@ -8,7 +8,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts'
 import { format, subDays } from 'date-fns'
-import VisitorsCard from './components/VisitorsCard' // 👈 استيراد كارت الزوار الجديد
+import VisitorsCard from './VisitorsCard'// 👈 استيراد كارت الزوار الجديد
 
 const DashboardHome = () => {
     const [stats, setStats] = useState({
