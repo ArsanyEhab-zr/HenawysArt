@@ -34,7 +34,6 @@ const getColorNameFromHex = (hex) => {
 };
 
 const OrderModal = ({ isOpen, onClose, product }) => {
-  // State Variables
   const [customerName, setCustomerName] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [shippingRatesList, setShippingRatesList] = useState([])
@@ -46,23 +45,19 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [pickerHex, setPickerHex] = useState('#ffffff')
   const [notes, setNotes] = useState('')
 
-  // Location States
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
   const [gpsError, setGpsError] = useState('')
 
-  // Addons States
   const [availableAddons, setAvailableAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [selections, setSelections] = useState({})
 
-  // Coupon States
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponMsg, setCouponMsg] = useState({ type: '', text: '' })
 
-  // Upload States
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -123,7 +118,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     finally { setLoadingAddons(false) }
   }
 
-  // Coupon Logic
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true)
@@ -156,21 +150,16 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
   }
 
-  // 🔥 1. تعديل منطق الـ Radio Buttons
   const handleToggleAddon = (addon) => {
     setSelections(prev => {
       const newSelections = { ...prev }
-
       if (addon.ui_type === 'checkbox') {
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
-
       } else if (addon.ui_type === 'radio') {
         if (newSelections[addon.id]) {
-          // لو كان مختار وداس عليه تاني -> يلغيه
           delete newSelections[addon.id]
         } else {
-          // لو اختار واحد جديد -> يلغي أي راديو تاني ويختار ده
           Object.values(newSelections).forEach(selected => {
             if (selected.ui_type === 'radio') {
               delete newSelections[selected.id]
@@ -183,40 +172,54 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  // 🔥 2. تعديل منطق تحديد المحافظة (يبحث في العنوان بالكامل)
+  // 🔥🔥🔥 تعديل جوهري في دالة التحديد التلقائي 🔥🔥🔥
   const autoSelectGovernorate = (addressData) => {
     if (!addressData || shippingRatesList.length === 0) return;
 
-    // بنستخدم العنوان الكامل عشان ندور فيه (زي ما ظهر في الصورة عندك)
+    // توحيد النصوص لحروف صغيرة للمقارنة
     const fullText = (addressData.display_name || '').toLowerCase();
+    let detectedGov = '';
 
-    // التعامل مع الإسكندرية ومناطقها
+    // 1. منطق الإسكندرية (المحسن)
     if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
-      if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
-        const agamiRate = shippingRatesList.find(r => r.governorate.includes('Agami'));
-        if (agamiRate) { setGovernorate(agamiRate.governorate); setGpsError(''); return; }
+      // بحث عن العجمي
+      if (fullText.includes('agami') || fullText.includes('hannoville') || fullText.includes('العجمي')) {
+        const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
+        if (match) detectedGov = match.governorate;
       }
-      if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
-        const borgRate = shippingRatesList.find(r => r.governorate.includes('Borg'));
-        if (borgRate) { setGovernorate(borgRate.governorate); setGpsError(''); return; }
+      // بحث عن برج العرب
+      else if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
+        const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('borg'));
+        if (match) detectedGov = match.governorate;
       }
-      // الباقي يبقي Center
-      const centerRate = shippingRatesList.find(r => r.governorate.includes('Center') && r.governorate.includes('Alexandria'));
-      if (centerRate) { setGovernorate(centerRate.governorate); setGpsError(''); return; }
+
+      // لو ملقاش مناطق فرعية، يختار "السنتر" أو أي حاجة فيها "إسكندرية"
+      if (!detectedGov) {
+        const centerMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('center') && r.governorate.toLowerCase().includes('alexandria'));
+        if (centerMatch) {
+          detectedGov = centerMatch.governorate;
+        } else {
+          // حل أخير: هات أي محافظة اسمها فيه "Alexandria"
+          const fallbackMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('alexandria'));
+          if (fallbackMatch) detectedGov = fallbackMatch.governorate;
+        }
+      }
+    }
+    // 2. باقي المحافظات
+    else {
+      const foundRate = shippingRatesList.find(rate => {
+        const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
+        return fullText.includes(cleanName);
+      });
+      if (foundRate) detectedGov = foundRate.governorate;
     }
 
-    // التعامل مع باقي المحافظات
-    const foundRate = shippingRatesList.find(rate => {
-      // بنشيل كلمة Governorate عشان نقارن الاسم بس
-      const cleanGovName = rate.governorate.toLowerCase().replace('governorate', '').trim();
-      return fullText.includes(cleanGovName);
-    });
-
-    if (foundRate) {
-      setGovernorate(foundRate.governorate);
-      setGpsError('');
+    // 3. تطبيق النتيجة
+    if (detectedGov) {
+      setGovernorate(detectedGov);
+      setGpsError(''); // مسح أي خطأ
     } else {
-      setGpsError('Detected address, but could not match Governorate. Please try again.');
+      setGpsError('Detected address, but could not match city automatically.');
     }
   }
 
@@ -238,7 +241,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
           if (data && data.display_name) {
             setAddress(data.display_name)
-            // 👇 تشغيل التحديد التلقائي
+            // 👇 تشغيل الدالة المحسنة
             autoSelectGovernorate(data);
           }
         } catch (error) {
@@ -248,19 +251,17 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       },
       (error) => {
         console.error("Error:", error);
-        alert("Could not get location. Check browser permissions.");
+        alert("Could not get location.");
         setIsLocating(false);
       }
     )
   }
 
-  // Price Calculation Logic
   const calculateTotals = () => {
     if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
 
     let productTotal = Number(product.price)
 
-    // 1. Addons
     const coupleAddon = Object.values(selections).find(a => a.operation_type === 'percent_double_discount')
     if (coupleAddon) {
       const doublePrice = productTotal * 2
@@ -275,7 +276,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       }
     })
 
-    // 2. Coupons
     let discountAmount = 0
     if (appliedCoupon) {
       if (appliedCoupon.discount_type === 'fixed') {
@@ -299,7 +299,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const { productTotalBeforeDiscount, discountAmount, finalProductPrice, grandTotal } = calculateTotals()
 
-  // Image Upload
   const uploadImage = async (file) => {
     try {
       const fileExt = file.name.split('.').pop()
@@ -312,26 +311,20 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (error) { return null }
   }
 
-  // Submit & Dashboard Save
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
-
-    // 👇 التحقق من المحافظة (لازم تكون اتحددت من الـ GPS)
     if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
-
     if (!address.trim()) { alert('Please enter detailed address'); return }
 
     if (selectedFile) setIsUploading(true)
 
-    // 1. Upload Image
     let uploadedImageUrl = ''
     if (selectedFile) {
       uploadedImageUrl = await uploadImage(selectedFile)
       if (!uploadedImageUrl) { setIsUploading(false); return }
     }
 
-    // 2. Insert into Supabase Orders
     try {
       const { error: orderError } = await supabase.from('orders').insert([{
         customer_name: customerName,
@@ -354,7 +347,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
       if (orderError) console.error("Dashboard insert failed", orderError)
 
-      // Increment stats
       await supabase.rpc('increment_sold_count', { product_id: product.id })
       if (appliedCoupon) {
         await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
@@ -363,7 +355,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       console.error(err)
     }
 
-    // 3. Prepare WhatsApp Message
     let detailsString = `\n--- 📋 Order Details ---\n`
     detailsString += `📍 Location: ${governorate}\n`
     detailsString += `🏠 Address: ${address}\n`
@@ -407,7 +398,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
 
-            {/* Header */}
             <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white relative">
               <button onClick={onClose} className="absolute top-4 right-4"><X /></button>
               <h2 className="text-2xl font-script font-bold">Customize Order</h2>
@@ -432,7 +422,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-              {/* Addons */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 {loadingAddons ? <Loader2 className="animate-spin mx-auto" /> : availableAddons.map(addon => {
                   const isSelected = !!selections[addon.id]
@@ -452,7 +441,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 })}
               </div>
 
-              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-text mb-2">Ref Image (Optional)</label>
                 <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300'}`}>
@@ -463,95 +451,38 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Custom Fields (Quote & Color) */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <Type size={16} /> Quote / Date on Item
-                  </label>
-                  <input
-                    type="text"
-                    value={customText}
-                    onChange={e => setCustomText(e.target.value)}
-                    placeholder="E.g., 12/5/2025 or 'Happy Birthday'"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Type size={16} /> Quote / Date on Item</label>
+                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="E.g., 12/5/2025 or 'Happy Birthday'" className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
                 </div>
-
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <Palette size={16} /> Background Color
-                  </label>
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Palette size={16} /> Background Color</label>
                   <div className="flex gap-2">
                     <div className="relative overflow-hidden w-14 h-[50px] rounded-lg border border-gray-200 shadow-sm shrink-0 cursor-pointer">
-                      <input
-                        type="color"
-                        value={pickerHex}
-                        onChange={e => {
-                          const hex = e.target.value;
-                          setPickerHex(hex);
-                          setBgColor(getColorNameFromHex(hex));
-                        }}
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer"
-                      />
+                      <input type="color" value={pickerHex} onChange={e => { const hex = e.target.value; setPickerHex(hex); setBgColor(getColorNameFromHex(hex)); }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer" />
                     </div>
-                    <input
-                      type="text"
-                      value={bgColor}
-                      onChange={e => setBgColor(e.target.value)}
-                      placeholder="Pick color or type name..."
-                      className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Pick color or type name..." className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
                   </div>
                 </div>
               </div>
 
-              {/* Coupons Section */}
               {!product.is_starting_price && (
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
-                    <Tag size={16} /> Promo Code
-                  </label>
+                  <label className="flex items-center gap-2 text-sm font-medium text-text mb-2"><Tag size={16} /> Promo Code</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Enter Code (e.g. SAVE10)"
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-lg uppercase"
-                      disabled={!!appliedCoupon}
-                    />
-                    {appliedCoupon ? (
-                      <button
-                        type="button"
-                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }}
-                        className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm"
-                      >
-                        Remove
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        disabled={couponLoading || !couponCode}
-                        className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50"
-                      >
-                        {couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}
-                      </button>
-                    )}
+                    <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Enter Code (e.g. SAVE10)" className="flex-1 px-4 py-2 border border-gray-200 rounded-lg uppercase" disabled={!!appliedCoupon} />
+                    {appliedCoupon ?
+                      <button type="button" onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponMsg({ type: '', text: '' }) }} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm">Remove</button> :
+                      <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50">{couponLoading ? <Loader2 className="animate-spin" size={16} /> : "Apply"}</button>
+                    }
                   </div>
-                  {couponMsg.text && (
-                    <p className={`text-xs mt-1 font-medium flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-                      {couponMsg.type === 'success' ? <Check size={12} /> : <AlertCircle size={12} />}
-                      {couponMsg.text}
-                    </p>
-                  )}
+                  {couponMsg.text && <p className={`text-xs mt-1 font-medium flex items-center gap-1 ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
                 </div>
               )}
 
               <hr className="border-gray-100" />
 
-              {/* Location & Name (الجزء المتعدل) */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text mb-2">Your Name *</label>
@@ -562,8 +493,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
                     <MapPin size={16} /> Governorate (Auto-Detected) *
                   </label>
-
-                  {/* 👇👇👇 التعديل هنا: الخانة بقت مقفولة (Disabled) وشكلها رمادي 👇👇👇 */}
                   <select
                     value={governorate}
                     onChange={e => setGovernorate(e.target.value)}
@@ -588,29 +517,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                       {isLocating ? <><Loader2 size={12} className="animate-spin" /> Auto-Detecting...</> : locationLink ? <><Check size={12} /> City Detected</> : <><Navigation size={12} /> Detect My City & Address</>}
                     </button>
                   </div>
-                  <textarea
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
-                    rows={2}
-                    className={`w-full px-4 py-3 border rounded-lg resize-none ${locationLink ? 'border-green-500' : ''}`}
-                    placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."}
-                    required
-                  />
+                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-lg resize-none ${locationLink ? 'border-green-500' : ''}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required />
                 </div>
 
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border rounded-lg resize-none" placeholder="Notes..." />
               </div>
 
-              {/* Important Notices */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 p-2 rounded-full"><AlertCircle className="text-blue-600" size={20} /></div>
-                  <div><h4 className="text-sm font-bold text-blue-800">Delivery Time</h4><p className="text-xs text-blue-700 mt-1">Order takes <span className="font-bold">10 to 14 days</span>.</p></div>
-                </div>
-                <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
-                  <div className="bg-blue-100 p-2 rounded-full"><Wallet className="text-blue-600" size={20} /></div>
-                  <div><h4 className="text-sm font-bold text-blue-800">Payment Policy</h4><p className="text-xs text-blue-700 mt-1"><span className="font-bold">50% Deposit</span> via Wallet.</p><p className="text-[10px] text-red-500 font-bold mt-1 uppercase">🚫 No Instapay</p></div>
-                </div>
+                <div className="flex items-start gap-3"><div className="bg-blue-100 p-2 rounded-full"><AlertCircle className="text-blue-600" size={20} /></div><div><h4 className="text-sm font-bold text-blue-800">Delivery Time</h4><p className="text-xs text-blue-700 mt-1">Order takes <span className="font-bold">10 to 14 days</span>.</p></div></div>
+                <div className="flex items-start gap-3 border-t border-blue-200 pt-3"><div className="bg-blue-100 p-2 rounded-full"><Wallet className="text-blue-600" size={20} /></div><div><h4 className="text-sm font-bold text-blue-800">Payment Policy</h4><p className="text-xs text-blue-700 mt-1"><span className="font-bold">50% Deposit</span> via Wallet.</p><p className="text-[10px] text-red-500 font-bold mt-1 uppercase">🚫 No Instapay</p></div></div>
               </div>
 
               <button type="submit" disabled={isUploading} className={`w-full bg-accent text-text font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg ${isUploading ? 'opacity-70' : ''}`}>
