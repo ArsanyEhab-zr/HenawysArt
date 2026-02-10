@@ -50,12 +50,12 @@ const Navbar = () => {
           <Link to="/">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="flex items-center gap-3 flex-shrink-0" // 👈 ضفنا flex و gap لتنسيق اللوجو مع الاسم
+              className="flex items-center gap-3 flex-shrink-0"
             >
               {/* 🖼️ الدائرة الخاصة باللوجو */}
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-gray-50 flex items-center justify-center">
                 <img
-                  src="public\logo.png" // 👈 اتأكد إن مسار الصورة صح (نفس اللي في الـ About)
+                  src="/logo.png"  // 👈 ده المسار اللي الـ Browser بيفهمه (بيقرأ من جوه الـ public)
                   alt="Henawy's Art Logo"
                   className="w-full h-full object-cover"
                 />
