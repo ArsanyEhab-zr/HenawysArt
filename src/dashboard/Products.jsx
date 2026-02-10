@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+// شلت ايقونة Layers عشان لو هي السبب
 import {
     Plus, Search, Edit, Trash2, X,
-    Image as ImageIcon, Loader2, Save, Tag, DollarSign, Layers
+    Image as ImageIcon, Loader2, Save, Tag, DollarSign
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const Products = () => {
     const [products, setProducts] = useState([])
-    const [categories, setCategories] = useState([]) // 👈 هنا هنخزن الأقسام من الداتابيز
+    const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [error, setError] = useState(null)
@@ -25,7 +26,7 @@ const Products = () => {
         category: '',
         description: '',
         image_url: '',
-        is_starting_price: false // 👈 غيرنا is_new لـ is_starting_price عشان تطابق الجدول
+        is_starting_price: false
     })
     const [imageFile, setImageFile] = useState(null)
     const [imagePreview, setImagePreview] = useState('')
@@ -38,7 +39,7 @@ const Products = () => {
         try {
             setLoading(true)
 
-            // 1. هات المنتجات (مع معالجة الأخطاء)
+            // 1. جلب المنتجات
             const { data: productsData, error: productsError } = await supabase
                 .from('products')
                 .select('*')
@@ -47,20 +48,20 @@ const Products = () => {
             if (productsError) throw productsError
             setProducts(productsData || [])
 
-            // 2. هات الأقسام من جدول categories اللي في الصورة
+            // 2. جلب الأقسام
             const { data: categoriesData, error: categoriesError } = await supabase
                 .from('categories')
                 .select('*')
 
             if (categoriesError) {
                 console.error("Categories Error:", categoriesError)
-                // لو فشل، متوقفش الصفحة، كمل من غير أقسام
             } else {
+                console.log("Categories loaded:", categoriesData) // 👈 عشان نشوفهم في الكونسول
                 setCategories(categoriesData || [])
             }
 
         } catch (error) {
-            console.error("Fetch Error:", error)
+            console.error("Fetch Error:", error) // 👈 ده هيطبع الخطأ الحقيقي لو حصل
             setError(error.message)
         } finally {
             setLoading(false)
@@ -68,7 +69,7 @@ const Products = () => {
     }
 
     const openModal = (product = null) => {
-        // نختار أول قسم افتراضي لو مفيش منتج محدد
+        // نختار أول قسم افتراضي
         const defaultCategory = categories.length > 0 ? categories[0].slug : '';
 
         if (product) {
@@ -79,7 +80,7 @@ const Products = () => {
                 category: product.category || defaultCategory,
                 description: product.description || '',
                 image_url: product.image_url || '',
-                is_starting_price: product.is_starting_price || false // 👈 مطابقة للجدول
+                is_starting_price: product.is_starting_price || false
             })
             setImagePreview(product.image_url || '')
         } else {
@@ -146,7 +147,7 @@ const Products = () => {
                 category: formData.category,
                 description: formData.description,
                 image_url: imageUrl || formData.image_url,
-                is_starting_price: formData.is_starting_price // 👈 الحفظ في العمود الصحيح
+                is_starting_price: formData.is_starting_price
             }
 
             if (editingProduct) {
@@ -193,19 +194,20 @@ const Products = () => {
         }
     }
 
-    // 🛡️ الفلترة الآمنة (الحل الجذري للشاشة البيضاء)
-    // بنستخدم ( || '') عشان لو القيمة null يحولها لنص فاضي وميضربش
+    // 🛡️ الفلترة الآمنة
     const filteredProducts = products.filter(p =>
         (p.title || '').toLowerCase().includes(search.toLowerCase()) ||
         (p.category || '').toLowerCase().includes(search.toLowerCase())
     )
 
+    // عرض رسالة الخطأ لو حصلت مشكلة في الاتصال
     if (error) return (
         <div className="p-12 text-center flex flex-col items-center gap-4">
             <div className="bg-red-50 p-4 rounded-full text-red-500"><X size={32} /></div>
             <div>
-                <h3 className="text-lg font-bold text-gray-800">Connection Error</h3>
+                <h3 className="text-lg font-bold text-gray-800">Error Loading Page</h3>
                 <p className="text-gray-500 max-w-md mx-auto">{error}</p>
+                <button onClick={() => window.location.reload()} className="mt-4 text-primary hover:underline">Reload Page</button>
             </div>
         </div>
     )
@@ -315,19 +317,20 @@ const Products = () => {
                                 </div>
                             </div>
 
-                            {/* Category Dropdown (من الداتابيز) */}
+                            {/* Category Dropdown (معدل) */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                 <div className="relative">
-                                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                    {/* شلنا ايقونة Layers من هنا عشان لو هي السبب */}
                                     <select
                                         value={formData.category}
                                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 bg-white"
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 bg-white"
                                     >
                                         <option value="" disabled>Select Category</option>
                                         {categories.map(cat => (
-                                            <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                                            /* ⚠️ استخدام slug كمفتاح بدل id تحسباً لو id مش موجود */
+                                            <option key={cat.slug || Math.random()} value={cat.slug}>{cat.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -339,7 +342,7 @@ const Products = () => {
                                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 resize-none h-20" placeholder="Details about the product..." />
                             </div>
 
-                            {/* Starting Price Checkbox (مطابق للجدول) */}
+                            {/* Starting Price Checkbox */}
                             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <input
                                     type="checkbox"
