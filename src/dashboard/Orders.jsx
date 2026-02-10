@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import useSound from 'use-sound'
-import notificationSfx from '../assets/sounds/notification.mp3' // نزل أي ملف صوت mp3
+import notificationSfx from '../assets/sounds/notification.wav'
 
 const Orders = () => {
     const [orders, setOrders] = useState([])
