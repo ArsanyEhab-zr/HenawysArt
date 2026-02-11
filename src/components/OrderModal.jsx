@@ -331,7 +331,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     if (!customerName.trim()) { alert('Please enter name'); return }
     if (!phone.trim()) { alert('Please enter phone number'); return }
     if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
-    if (!address.trim()) { alert('Please enter detailed address'); return }
+    // 🛑 تم حذف شرط إجبارية العنوان من هنا
 
     if (selectedFile) setIsUploading(true)
 
@@ -346,7 +346,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         customer_name: customerName,
         phone: phone,
         governorate: governorate,
-        address: address,
+        address: address, // لو فاضي هيبعت نص فاضي عادي
         total_price: grandTotal,
         shipping_fee: shippingFee,
         status: 'pending',
@@ -372,130 +372,84 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (err) {
       console.error(err)
     }
-    const handleSubmit = async (e) => {
-      e.preventDefault()
-      if (!customerName.trim()) { alert('Please enter name'); return }
-      if (!phone.trim()) { alert('Please enter phone number'); return }
-      if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
-      if (!address.trim()) { alert('Please enter detailed address'); return }
 
-      if (selectedFile) setIsUploading(true)
+    // 👇👇👇👇 بناء الرسالة الاحترافية للواتساب 👇👇👇👇
 
-      let uploadedImageUrl = ''
-      if (selectedFile) {
-        uploadedImageUrl = await uploadImage(selectedFile)
-        if (!uploadedImageUrl) { setIsUploading(false); return }
-      }
+    // 1. العنوان الرئيسي
+    let message = `*NEW ORDER REQUEST* 🛒\n`;
+    message += `Product: *${product.title}*\n`;
+    message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
+    message += `--------------------------------\n`;
 
-      try {
-        const { error: orderError } = await supabase.from('orders').insert([{
-          customer_name: customerName,
-          phone: phone,
-          governorate: governorate,
-          address: address,
-          total_price: grandTotal,
-          shipping_fee: shippingFee,
-          status: 'pending',
-          items: {
-            productId: product.id,
-            productName: product.title,
-            addons: selections,
-            customText: customText,
-            bgColor: bgColor,
-            coupon: appliedCoupon ? appliedCoupon.code : null,
-            refImage: uploadedImageUrl
-          },
-          notes: notes
-        }])
+    // 2. قسم العميل
+    message += `*CUSTOMER DETAILS*\n`;
+    message += `> Name: ${customerName}\n`;
+    message += `> Phone: ${phone}\n`;
+    message += `> City: ${governorate}\n`;
+    message += `> Address: ${address || "Not Provided"}\n`;
+    if (locationLink) message += `> GPS: ${locationLink}\n`;
+    message += `\n`;
 
-        if (orderError) console.error("Dashboard insert failed", orderError)
+    // 3. قسم المواصفات
+    message += `*ORDER SPECIFICATIONS*\n`;
+    if (customText) message += `• Text/Date: "${customText}"\n`;
+    if (bgColor) message += `• Color: ${bgColor}\n`;
+    if (notes) message += `• Notes: ${notes}\n`;
+    if (uploadedImageUrl) message += `• Reference: Attached (Link below)\n`;
 
-        await supabase.rpc('increment_sold_count', { product_id: product.id })
-
-        if (appliedCoupon) {
-          await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
-        }
-      } catch (err) {
-        console.error(err)
-      }
-
-      // 👇👇👇👇 الرسالة الجديدة (ستايل الفاتورة الرسمية) 👇👇👇👇
-
-      // 1. العنوان الرئيسي
-      let message = `*NEW ORDER REQUEST* 🛒\n`;
-      message += `Product: *${product.title}*\n`;
-      message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
-      message += `--------------------------------\n`;
-
-      // 2. قسم العميل
-      message += `*CUSTOMER DETAILS*\n`;
-      message += `> Name: ${customerName}\n`;
-      message += `> Phone: ${phone}\n`;
-      message += `> City: ${governorate}\n`;
-      message += `> Address: ${address}\n`;
-      if (locationLink) message += `> GPS: ${locationLink}\n`;
-      message += `\n`;
-
-      // 3. قسم المواصفات
-      message += `*ORDER SPECIFICATIONS*\n`;
-      if (customText) message += `• Text/Date: "${customText}"\n`;
-      if (bgColor) message += `• Color: ${bgColor}\n`;
-      if (notes) message += `• Notes: ${notes}\n`;
-      if (uploadedImageUrl) message += `• Reference: Attached (Link below)\n`;
-
-      // 4. الإضافات (بدون إيموجي)
-      const selectedList = Object.values(selections);
-      if (selectedList.length > 0) {
-        message += `\n*SELECTED ADD-ONS*\n`;
-        selectedList.forEach(addon => {
-          let priceIndicator = '';
-          if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
-          message += `[+] ${addon.title}${priceIndicator}\n`;
-        });
-      }
-      message += `--------------------------------\n`;
-
-      // 5. الحساب (شكل فاتورة)
-      message += `*PAYMENT BREAKDOWN*\n`;
-
-      if (product.is_starting_price) {
-        message += `Base Price: Starts from ${product.price} EGP\n`;
-        message += `(Final price TBD upon confirmation)\n`;
-      } else {
-        // السعر الأساسي
-        message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
-
-        // الخصم
-        if (appliedCoupon) {
-          message += `Coupon (${appliedCoupon.code}): -${discountAmount} EGP\n`;
-          message += `Net Item Price: ${finalProductPrice} EGP\n`;
-        }
-
-        // الشحن والإجمالي
-        message += `Shipping: ${shippingFee} EGP\n`;
-        message += `========================\n`;
-        message += `*TOTAL: ${grandTotal} EGP*\n`;
-        message += `========================\n`;
-      }
-
-      // 6. السياسات (بشكل تنبيه نصي)
-      message += `\n*IMPORTANT NOTES*\n`;
-      message += `1. Delivery: 10-14 Working Days.\n`;
-      message += `2. Payment: 50% Deposit required via Wallet.\n`;
-
-      if (uploadedImageUrl) {
-        message += `\nRef Image Link:\n${uploadedImageUrl}`;
-      }
-
-      // التشفير والإرسال
-      const encodedMessage = encodeURIComponent(message);
-      const myNumber = "201280140268";
-
-      window.open(`https://api.whatsapp.com/send?phone=${myNumber}&text=${encodedMessage}`, '_blank');
-
-      setIsUploading(false)
-      onClose()
+    // 4. الإضافات (بدون إيموجي)
+    const selectedList = Object.values(selections);
+    if (selectedList.length > 0) {
+      message += `\n*SELECTED ADD-ONS*\n`;
+      selectedList.forEach(addon => {
+        let priceIndicator = '';
+        if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
+        message += `[+] ${addon.title}${priceIndicator}\n`;
+      });
     }
+    message += `--------------------------------\n`;
+
+    // 5. الحساب (شكل فاتورة)
+    message += `*PAYMENT BREAKDOWN*\n`;
+
+    if (product.is_starting_price) {
+      message += `Base Price: Starts from ${product.price} EGP\n`;
+      message += `(Final price TBD upon confirmation)\n`;
+    } else {
+      // السعر الأساسي
+      message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
+
+      // الخصم
+      if (appliedCoupon) {
+        message += `Coupon (${appliedCoupon.code}): -${discountAmount} EGP\n`;
+        message += `Net Item Price: ${finalProductPrice} EGP\n`;
+      }
+
+      // الشحن والإجمالي
+      message += `Shipping: ${shippingFee} EGP\n`;
+      message += `========================\n`;
+      message += `*TOTAL: ${grandTotal} EGP*\n`;
+      message += `========================\n`;
+    }
+
+    // 6. السياسات (بشكل تنبيه نصي)
+    message += `\n*IMPORTANT NOTES*\n`;
+    message += `1. Delivery: 10-14 Working Days.\n`;
+    message += `2. Payment: 50% Deposit required via Wallet.\n`;
+
+    if (uploadedImageUrl) {
+      message += `\nRef Image Link:\n${uploadedImageUrl}`;
+    }
+
+    // التشفير والإرسال
+    const encodedMessage = encodeURIComponent(message);
+    const myNumber = "201280140268";
+
+    window.open(`https://api.whatsapp.com/send?phone=${myNumber}&text=${encodedMessage}`, '_blank');
+
+    setIsUploading(false)
+    onClose()
+  }
 
   return (
     <AnimatePresence>
@@ -695,12 +649,14 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address <span className="text-red-500">*</span></label>
+                    {/* 👇 تم التعديل: شيلنا النجمة الحمراء */}
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address (Optional)</label>
                     <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1 transition-all shadow-sm ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
                       {isLocating ? <><Loader2 size={12} className="animate-spin" /> Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My Location</>}
                     </button>
                   </div>
-                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required />
+                  {/* 👇 تم التعديل: شيلنا خاصية required */}
+                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} />
                 </div>
 
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes..." />
@@ -742,6 +698,5 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       )}
     </AnimatePresence>
   )
-}
 }
 export default OrderModal
