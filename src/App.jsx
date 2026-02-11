@@ -27,7 +27,7 @@ import Orders from './dashboard/Orders'
 import Users from './dashboard/Users'
 import Products from './dashboard/Products'
 import Settings from './dashboard/Settings'
-import VisitorLogs from './dashboard/VisitorLogs' // 👈 1. استيراد صفحة سجل الزوار الجديدة
+import VisitorLogs from './dashboard/VisitorLogs'
 
 // مكون مساعد عشان نخفي الـ Navbar والـ Footer في الداش بورد
 const Layout = ({ children }) => {
@@ -44,7 +44,7 @@ const Layout = ({ children }) => {
 }
 
 function App() {
-  
+
   // 👇👇👇 كود التتبع الذكي (Smart Tracker) 👇👇👇
   useEffect(() => {
     const recordVisit = async () => {
@@ -53,19 +53,18 @@ function App() {
       if (hasVisited) return
 
       // 🛑 2. الفلتر الثاني: كشف البوتات (Anti-Bot Check)
-      // بنفحص "بصمة" المتصفح عشان نعرف هل هو روبوت ولا بني آدم
       const userAgent = navigator.userAgent.toLowerCase()
       const isBot =
         userAgent.includes('bot') ||        // جوجل وغيره
         userAgent.includes('crawler') ||    // زواحف الأرشفة
         userAgent.includes('spider') ||     // عناكب البحث
-        userAgent.includes('headless') ||   // متصفحات الكود (زي اللي ظهرلك)
+        userAgent.includes('headless') ||   // متصفحات الكود
         userAgent.includes('lighthouse') || // أداة قياس الأداء
         navigator.webdriver                 // خاصية بتبقى True لو المتصفح شغال ببرنامج تحكم آلي
 
       if (isBot) {
         console.log("🤖 Bot detected! Visit ignored.")
-        return // ⛔ وقف هنا ومتكملش الكود، متسجلوش في الداتابيز
+        return // ⛔ وقف هنا ومتكملش الكود
       }
 
       try {
@@ -74,15 +73,14 @@ function App() {
         if (!res.ok) throw new Error('Location API failed')
         const locationData = await res.json()
 
-        // 4. فلتر إضافي: لو شركة النت هي داتا سنتر (زي أمازون وجوجل كلاود) تجاهله
-        // لأن مفيش بني آدم عادي بيفتح نت من داتا سنتر
+        // 4. فلتر إضافي: لو شركة النت هي داتا سنتر
         const org = (locationData.org || '').toLowerCase()
         if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) {
           console.log("🏢 Data Center traffic detected! Visit ignored.")
           return
         }
 
-        // 5. باقي الكود العادي.. تسجيل البيانات
+        // 5. تجهيز البيانات
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
         let referrer = document.referrer || "Direct / Typed URL";
         if (referrer.includes("facebook")) referrer = "Facebook";
@@ -91,7 +89,9 @@ function App() {
 
         const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-        await supabase.from('site_visits').insert([{
+        // 6. الإرسال للداتابيز وحفظ الـ ID
+        // 👇 التعديل المهم هنا 👇
+        const { data, error } = await supabase.from('site_visits').insert([{
           country: locationData.country_name || 'Unknown',
           city: locationData.city || 'Unknown',
           device_type: isMobile ? 'Mobile' : 'Desktop',
@@ -101,8 +101,16 @@ function App() {
           screen_res: screenRes,
           browser_lang: navigator.language
         }])
+          .select() // 👈 هات البيانات اللي اتسجلت
+          .single() // 👈 هات صف واحد بس
 
-        sessionStorage.setItem('visited_session', 'true')
+        if (error) throw error
+
+        // ✅ حفظنا الـ ID بتاع الزيارة دي عشان نستخدمه لما يشوف منتج
+        if (data) {
+          sessionStorage.setItem('current_visit_id', data.id)
+          sessionStorage.setItem('visited_session', 'true')
+        }
 
       } catch (error) {
         console.error("Tracking Error (Site works fine):", error)
@@ -151,7 +159,7 @@ function App() {
             {/* صفحة المنتجات */}
             <Route path="products" element={<Products />} />
 
-            {/* 👇👇👇 صفحة سجل الزوار (جديدة) 👇👇👇 */}
+            {/* صفحة سجل الزوار */}
             <Route path="visitors" element={
               <RequireAuth allowedRoles={['admin']}>
                 <VisitorLogs />

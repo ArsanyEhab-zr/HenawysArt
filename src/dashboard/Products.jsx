@@ -4,6 +4,7 @@ import {
     Plus, Search, Edit, Trash2, X,
     Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle, Sparkles
 } from 'lucide-react'
+import { Eye } from 'lucide-react' // في الـ imports فوق
 import { toast } from 'react-hot-toast'
 
 const Products = () => {
@@ -313,6 +314,10 @@ const Products = () => {
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-gray-800 line-clamp-1" title={product.title}>{product.title || 'Untitled'}</h3>
                                     <span className="font-bold text-primary">{product.price} EGP</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500 text-xs font-bold mt-2">
+                                    <Eye size={14} className="text-blue-500" />
+                                    <span>{product.views || 0} Views</span>
                                 </div>
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200 uppercase">{product.category}</span>

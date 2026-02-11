@@ -19,14 +19,12 @@ const CategoryPage = () => {
   useEffect(() => {
     fetchCategoryProducts()
 
-    // 👇👇👇 كود الاستماع اللحظي (Realtime) 👇👇👇
     const channel = supabase
       .channel('realtime-category-products')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'products' },
         (payload) => {
-          // لما يحصل أي تعديل في المخزون، نحدث المنتج ده فوراً في الشاشة
           setProducts((currentProducts) =>
             currentProducts.map((product) =>
               product.id === payload.new.id ? payload.new : product
@@ -36,18 +34,14 @@ const CategoryPage = () => {
       )
       .subscribe()
 
-    // تنظيف الاشتراك لما تخرج من الصفحة
     return () => {
       supabase.removeChannel(channel)
     }
-    // 👆👆👆 نهاية الكود الجديد 👆👆👆
-
   }, [category])
 
   const fetchCategoryProducts = async () => {
     try {
       setLoading(true)
-
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -55,7 +49,6 @@ const CategoryPage = () => {
         .order('price', { ascending: true })
 
       if (error) throw error
-
       setProducts(data || [])
     } catch (error) {
       console.error('Error fetching products:', error.message)
@@ -64,10 +57,38 @@ const CategoryPage = () => {
     }
   }
 
-  const handleOrderClick = (product) => {
+  // 👇👇👇 التعديل هنا: دالة التعامل مع النقرات المحدثة 👇👇👇
+  const handleOrderClick = async (product) => {
     setSelectedProduct(product)
     setIsModalOpen(true)
+
+    try {
+      // 1. مفتاح لمنع تكرار العد لنفس الزائر في نفس الجلسة
+      const sessionKey = `viewed_p_${product.id}`
+      const hasViewed = sessionStorage.getItem(sessionKey)
+
+      if (!hasViewed) {
+        // أ- زيادة عداد المشاهدات الإجمالي (Reach) في جدول المنتجات
+        await supabase.rpc('increment_product_views', { p_id: product.id })
+
+        // ب- تسجيل "رحلة العميل" بربط المنتج برقم الزيارة الحالية
+        const visitId = sessionStorage.getItem('current_visit_id')
+        if (visitId) {
+          await supabase.from('visit_activities').insert({
+            visit_id: visitId,
+            product_id: product.id
+          })
+        }
+
+        // 2. علم في المتصفح إنه شافه عشان ميتعدش تاني لو قفل المودال وفتحه
+        sessionStorage.setItem(sessionKey, 'true')
+      }
+    } catch (err) {
+      // بنعمل log بسيط عشان ميعطلش تجربة المستخدم لو حصلت مشكلة في التتبع
+      console.error("Tracking error:", err)
+    }
   }
+  // 👆👆👆 نهاية التعديل 👆👆👆
 
   const closeModal = () => {
     setIsModalOpen(false)

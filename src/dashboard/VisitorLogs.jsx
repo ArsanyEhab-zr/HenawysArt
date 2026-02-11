@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabaseClient' // 👈 تأكد من المسار
-import { MapPin, Smartphone, Monitor, Clock, ArrowLeft, Loader2, Globe, Cpu, Wifi } from 'lucide-react'
+import { supabase } from '../supabaseClient'
+import { MapPin, Smartphone, Monitor, Clock, ArrowLeft, Loader2, Globe, Wifi, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const VisitorLogs = () => {
@@ -10,20 +10,21 @@ const VisitorLogs = () => {
     useEffect(() => {
         fetchVisits()
 
-        // 👇👇👇 السحر هنا: الاشتراك في التحديثات اللحظية 👇👇👇
+        // 👇 السحر هنا: الاشتراك اللحظي في الزيارات والأنشطة الجديدة
         const channel = supabase
-            .channel('realtime-logs')
+            .channel('realtime-activity')
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'site_visits' },
-                (payload) => {
-                    // أول ما تيجي زيارة جديدة، ضيفها في أول القائمة
-                    setVisits((prevVisits) => [payload.new, ...prevVisits])
-                }
+                () => fetchVisits() // بنعيد التحميل عشان نجيب الزيارة الجديدة كاملة بالعلاقات
+            )
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'visit_activities' },
+                () => fetchVisits() // لو حد شاف منتج جديد والصفحة مفتوحة، الجدول يتحدث فوراً
             )
             .subscribe()
 
-        // تنظيف الاشتراك لما تخرج من الصفحة
         return () => {
             supabase.removeChannel(channel)
         }
@@ -31,11 +32,17 @@ const VisitorLogs = () => {
 
     const fetchVisits = async () => {
         try {
+            // جلب الزيارات + الأنشطة المرتبطة + تفاصيل المنتج لكل نشاط
             const { data, error } = await supabase
                 .from('site_visits')
-                .select('*')
+                .select(`
+                    *,
+                    visit_activities (
+                        product: products (title, image_url)
+                    )
+                `)
                 .order('created_at', { ascending: false })
-                .limit(100)
+                .limit(50)
 
             if (error) throw error
             setVisits(data || [])
@@ -56,72 +63,85 @@ const VisitorLogs = () => {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex items-center gap-4">
-                <Link to="/dashboard" className="p-2 bg-white rounded-full border hover:bg-gray-50 text-gray-600 transition-colors">
+                <Link to="/dashboard" className="p-2 bg-white rounded-full border hover:bg-gray-50 text-gray-600 transition-colors shadow-sm">
                     <ArrowLeft size={20} />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Live Visitor Logs 🔴</h1>
-                    <p className="text-gray-500 text-sm">Watching traffic in real-time...</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Customer Journey Logs 🕵️‍♂️</h1>
+                    <p className="text-gray-500 text-sm">Real-time tracking of who is browsing what.</p>
                 </div>
             </div>
 
+            {/* Logs Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
                     <div className="p-12 text-center flex justify-center"><Loader2 className="animate-spin text-primary" size={40} /></div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-100">
                                 <tr>
-                                    <th className="p-4 font-medium uppercase tracking-wider text-xs">User Info</th>
-                                    <th className="p-4 font-medium uppercase tracking-wider text-xs">Source & ISP</th>
-                                    <th className="p-4 font-medium uppercase tracking-wider text-xs">Tech Specs</th>
-                                    <th className="p-4 font-medium uppercase tracking-wider text-xs">Time</th>
+                                    <th className="p-4 font-bold">Visitor Info</th>
+                                    <th className="p-4 font-bold">Source & Network</th>
+                                    <th className="p-4 font-bold text-blue-600">Items Viewed (The Journey)</th>
+                                    <th className="p-4 font-bold">Last Activity</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {visits.map((visit) => (
-                                    // بنستخدم key فريد عشان الرياكت ميتلخبطش في التحديث
-                                    <tr key={visit.id} className="hover:bg-gray-50 transition-colors animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <tr key={visit.id} className="hover:bg-gray-50/50 transition-colors animate-in fade-in slide-in-from-top-1 duration-500">
 
+                                        {/* 1. Visitor Info */}
                                         <td className="p-4 align-top">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2 text-gray-800 font-bold">
-                                                    {visit.device_type === 'Mobile' ? <Smartphone size={18} className="text-purple-600" /> : <Monitor size={18} className="text-blue-600" />}
+                                                    {visit.device_type === 'Mobile' ? <Smartphone size={16} className="text-purple-500" /> : <Monitor size={16} className="text-blue-500" />}
                                                     {visit.city || 'Unknown'}, {visit.country || 'Unknown'}
                                                 </div>
-                                                <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                    <MapPin size={12} /> {visit.device_type}
-                                                </div>
+                                                <div className="text-[10px] text-gray-400 font-mono">{visit.screen_res} • {visit.browser_lang}</div>
                                             </div>
                                         </td>
 
-                                        <td className="p-4 align-top">
-                                            <div className="flex flex-col gap-1">
-                                                <span className={`text-sm font-bold flex items-center gap-2 ${visit.referrer && !visit.referrer.includes('Direct') ? 'text-blue-600' : 'text-gray-600'}`}>
-                                                    <Globe size={14} /> {visit.referrer || 'Direct'}
-                                                </span>
-                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                    <Wifi size={12} /> {visit.isp || 'Unknown'}
-                                                </span>
+                                        {/* 2. Source & ISP */}
+                                        <td className="p-4 align-top text-sm">
+                                            <div className="font-bold text-gray-700 flex items-center gap-1">
+                                                <Globe size={14} className="text-blue-400" />
+                                                <span className="truncate max-w-[150px]">{visit.referrer || 'Direct'}</span>
+                                            </div>
+                                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                                <Wifi size={12} /> {visit.isp || 'Unknown ISP'}
                                             </div>
                                         </td>
 
+                                        {/* 3. Viewed Items (Journey) */}
                                         <td className="p-4 align-top">
-                                            <div className="text-xs text-gray-600 space-y-1">
-                                                <div className="flex items-center gap-1">
-                                                    <Monitor size={12} className="text-gray-400" /> {visit.screen_res}
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Globe size={12} className="text-gray-400" /> {visit.browser_lang}
-                                                </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {visit.visit_activities && visit.visit_activities.length > 0 ? (
+                                                    visit.visit_activities.map((activity, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 bg-blue-50/50 px-2 py-1 rounded-lg border border-blue-100 group">
+                                                            <img
+                                                                src={activity.product?.image_url}
+                                                                alt="p"
+                                                                className="w-6 h-6 rounded object-cover shadow-sm"
+                                                            />
+                                                            <span className="text-[11px] font-bold text-blue-700 max-w-[100px] truncate">
+                                                                {activity.product?.title}
+                                                            </span>
+                                                            <Eye size={10} className="text-blue-300" />
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-gray-300 italic">No items viewed yet...</span>
+                                                )}
                                             </div>
                                         </td>
 
+                                        {/* 4. Time */}
                                         <td className="p-4 align-top">
-                                            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-                                                <Clock size={16} className="text-gray-400" />
+                                            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium bg-gray-50 px-3 py-1 rounded-full w-fit border">
+                                                <Clock size={14} className="text-gray-400" />
                                                 {formatDate(visit.created_at)}
                                             </div>
                                         </td>
@@ -129,6 +149,11 @@ const VisitorLogs = () => {
                                 ))}
                             </tbody>
                         </table>
+                        {visits.length === 0 && (
+                            <div className="p-20 text-center text-gray-400 italic">
+                                No visitor activity recorded yet.
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
