@@ -373,41 +373,76 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       console.error(err)
     }
 
-    let detailsString = `\n--- 📋 Order Details ---\n`
-    detailsString += `👤 Customer: ${customerName}\n`
-    detailsString += `📱 Phone: ${phone}\n`
-    detailsString += `📍 Location: ${governorate}\n`
-    detailsString += `🏠 Address: ${address}\n`
-    if (locationLink) detailsString += `🌍 GPS Link: ${locationLink}\n`
+    // 👇👇👇👇 بناء الرسالة الاحترافية للواتساب 👇👇👇👇
 
-    if (customText) detailsString += `✍️ Text/Date: "${customText}"\n`
-    if (bgColor) detailsString += `🎨 Bg Color: ${bgColor}\n`
+    // 1. المقدمة
+    let message = `Hello, I would like to order: *${product.title}* 🎨\n`;
 
-    const selectedList = Object.values(selections)
+    // 2. بيانات العميل
+    message += `\n👤 *Customer Info*`;
+    message += `\nName: ${customerName}`;
+    message += `\n📱 Phone: ${phone}`;
+    message += `\n📍 City: ${governorate}`;
+    message += `\n🏠 Address: ${address}`;
+    if (locationLink) message += `\n🌍 GPS: ${locationLink}`;
+
+    // 3. التخصيص (الألوان والنصوص)
+    message += `\n\n✨ *Customizations*`;
+    if (customText) message += `\n✍️ Text/Date: "${customText}"`;
+    if (bgColor) message += `\n🎨 Bg Color: ${bgColor}`;
+    if (uploadedImageUrl) message += `\n🖼️ Reference Image: Attached (Link Generated)`;
+    if (notes) message += `\n📝 Notes: ${notes}`;
+
+    // 4. الإضافات (Addons)
+    const selectedList = Object.values(selections);
     if (selectedList.length > 0) {
-      selectedList.forEach(addon => { detailsString += `• ${addon.title}\n` })
+      message += `\n\n➕ *Selected Add-ons*`;
+      selectedList.forEach(addon => {
+        let priceIndicator = '';
+        if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
+        message += `\n✅ ${addon.title}${priceIndicator}`;
+      });
     }
 
-    if (uploadedImageUrl) detailsString += `\n🖼️ Ref Image: ${uploadedImageUrl}\n`
-
+    // 5. الحساب والتفاصيل المالية
+    message += `\n\n💰 *Payment Breakdown*`;
     if (product.is_starting_price) {
-      detailsString += `\n💵 Price: Starts from ${product.price} EGP (TBD)`;
+      message += `\nBase Price Starts from: ${product.price} EGP (To be confirmed)`;
     } else {
-      detailsString += `\n💵 Item Price: ${productTotalBeforeDiscount} EGP`;
-      if (appliedCoupon) {
-        detailsString += `\n🎟️ Coupon (${appliedCoupon.code}): -${discountAmount} EGP`;
-        detailsString += `\n📉 Price after discount: ${finalProductPrice} EGP`;
+      // تفاصيل السعر قبل الخصم
+      if (selectedList.length > 0) {
+        message += `\nItem + Addons: ${productTotalBeforeDiscount} EGP`;
+      } else {
+        message += `\nItem Price: ${productTotalBeforeDiscount} EGP`;
       }
+
+      // تفاصيل الكوبون
+      if (appliedCoupon) {
+        message += `\n🎫 Coupon (${appliedCoupon.code}): -${discountAmount} EGP`;
+        message += `\n📉 Price after Discount: ${finalProductPrice} EGP`;
+      }
+
+      // الشحن والاجمالي
+      message += `\n🚚 Shipping: ${shippingFee} EGP`;
+      message += `\n━━━━━━━━━━━━━━`;
+      message += `\n💵 *TOTAL REQUIRED: ${grandTotal} EGP*`;
     }
 
-    detailsString += `\n🚚 Shipping: ${shippingFee} EGP`;
-    if (!product.is_starting_price) {
-      detailsString += `\n💰 Total Required: ${grandTotal} EGP`;
+    // 6. الخاتمة والسياسات
+    message += `\n\n⚠️ *Policy Agreement:*`;
+    message += `\n• Delivery Time: 10-14 days.`;
+    message += `\n• Payment: 50% Deposit via Wallet (🚫 No InstaPay).`;
+
+    if (uploadedImageUrl) {
+      message += `\n\n📎 Image Link: ${uploadedImageUrl}`;
     }
 
-    detailsString += `\n⚠️ Client aware of: 10-14 days delivery & 50% Wallet Deposit.`
+    // 👇👇👇 الحل الجذري لمشكلة الإيموجي والروابط 👇👇👇
+    const encodedMessage = encodeURIComponent(message);
+    const myNumber = "201xxxxxxxxx"; // 👈 حط رقمك هنا
 
-    openWhatsAppChat(product, customerName, notes + detailsString)
+    window.open(`https://wa.me/${myNumber}?text=${encodedMessage}`, '_blank');
+
     setIsUploading(false)
     onClose()
   }
@@ -426,11 +461,10 @@ const OrderModal = ({ isOpen, onClose, product }) => {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={e => e.stopPropagation()}
-            // 👇 هنا التعديل: إخفاء السكرول بار باستخدام كلاس خاص وتكبير العرض شوية
             className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
           >
 
-            {/* Header Sticky - ثابت في الأعلى */}
+            {/* Header Sticky */}
             <div className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-dark p-6 text-white shadow-lg backdrop-blur-md">
               <button onClick={onClose} className="absolute top-4 right-4 bg-white/20 p-1 rounded-full hover:bg-white/40 transition-all"><X size={20} /></button>
               <h2 className="text-xl md:text-2xl font-script font-bold">Customize Order</h2>
@@ -456,7 +490,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-              {/* Addons Grid - شكل الكروت الجديد */}
+              {/* Addons Grid */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
                   <Palette size={16} className="text-primary" /> Customizations
@@ -479,7 +513,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                             : 'border-gray-100 hover:border-primary/50 hover:shadow-md bg-white'
                           }`}
                       >
-                        {/* Checkbox Icon */}
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
                                 ${isSelected ? 'border-primary bg-primary text-white' : 'border-gray-300 group-hover:border-primary/50'}`}>
                           {isSelected && <Check size={12} strokeWidth={4} />}
@@ -496,7 +529,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Image Upload - تصميم جديد */}
+              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Reference Image (Optional)</label>
                 <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:bg-gray-50 
@@ -538,7 +571,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Phone Section - مفصول لوحده لضمان الظهور */}
+              {/* Phone Section */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <Phone size={16} className="text-primary" /> Phone Number <span className="text-red-500">*</span>
@@ -553,7 +586,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 />
               </div>
 
-              {/* Coupon Section - مفصول لوحده */}
+              {/* Coupon Section */}
               {!product.is_starting_price && (
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
@@ -643,7 +676,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <span className="text-xs font-bold text-purple-800 uppercase">Payment Policy</span>
                   </div>
                   <p className="text-xs text-purple-700 font-medium">50% Deposit via Wallet.</p>
-                  {/* 👇 رجعتلك التحذير هنا 👇 */}
                   <p className="text-[10px] text-red-500 font-bold mt-1 uppercase flex items-center gap-1">
                     🚫 No Instapay
                   </p>
