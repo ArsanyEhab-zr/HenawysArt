@@ -45,75 +45,85 @@ const Layout = ({ children }) => {
 
 function App() {
 
-  // 👇👇👇 كود التتبع الذكي (Smart Tracker) 👇👇👇
+  // 👇👇👇 كود التتبع المعدل (Robust Tracker) 👇👇👇
   useEffect(() => {
     const recordVisit = async () => {
-      // 1. الفلتر الأول: لو الزائر ده مسجل عندنا في نفس الجلسة، تجاهله
-      const hasVisited = sessionStorage.getItem('visited_session')
-      if (hasVisited) return
+      console.log("🚀 Tracking started...") // تأكيد إن الكود بدأ
 
-      // 🛑 2. الفلتر الثاني: كشف البوتات (Anti-Bot Check)
+      // 1. الفلتر الأول: الجلسة المسجلة
+      const hasVisited = sessionStorage.getItem('visited_session')
+      if (hasVisited) {
+        console.log("ℹ️ Session already recorded.")
+        return
+      }
+
+      // 🛑 2. الفلتر الثاني: كشف البوتات
       const userAgent = navigator.userAgent.toLowerCase()
       const isBot =
-        userAgent.includes('bot') ||        // جوجل وغيره
-        userAgent.includes('crawler') ||    // زواحف الأرشفة
-        userAgent.includes('spider') ||     // عناكب البحث
-        userAgent.includes('headless') ||   // متصفحات الكود
-        userAgent.includes('lighthouse') || // أداة قياس الأداء
-        navigator.webdriver                 // خاصية بتبقى True لو المتصفح شغال ببرنامج تحكم آلي
+        userAgent.includes('bot') ||
+        userAgent.includes('crawler') ||
+        userAgent.includes('spider') ||
+        userAgent.includes('headless') ||
+        navigator.webdriver
 
       if (isBot) {
         console.log("🤖 Bot detected! Visit ignored.")
-        return // ⛔ وقف هنا ومتكملش الكود
+        return
       }
 
+      // 3. محاولة جلب الموقع (بطريقة آمنة مابتوقفش الكود)
+      let locationData = {}
       try {
-        // 3. لو عدى من الفلتر، هات بياناته
         const res = await fetch('https://ipapi.co/json/')
-        if (!res.ok) throw new Error('Location API failed')
-        const locationData = await res.json()
-
-        // 4. فلتر إضافي: لو شركة النت هي داتا سنتر
-        const org = (locationData.org || '').toLowerCase()
-        if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) {
-          console.log("🏢 Data Center traffic detected! Visit ignored.")
-          return
+        if (res.ok) {
+          locationData = await res.json()
+        } else {
+          console.warn("⚠️ Location API failed, recording as Unknown.")
         }
+      } catch (err) {
+        console.warn("⚠️ Network/AdBlock Error fetching location, continuing...", err)
+      }
 
-        // 5. تجهيز البيانات
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-        let referrer = document.referrer || "Direct / Typed URL";
-        if (referrer.includes("facebook")) referrer = "Facebook";
-        else if (referrer.includes("google")) referrer = "Google";
-        else if (referrer.includes("instagram")) referrer = "Instagram";
+      // 4. فلتر الداتا سنتر (لو عرفنا نجيب البيانات)
+      const org = (locationData.org || '').toLowerCase()
+      if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) {
+        console.log("🏢 Data Center traffic detected! Visit ignored.")
+        return
+      }
 
-        const screenRes = `${window.screen.width}x${window.screen.height}`;
+      // 5. تجهيز البيانات
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      let referrer = document.referrer || "Direct / Typed URL";
+      if (referrer.includes("facebook")) referrer = "Facebook";
+      else if (referrer.includes("google")) referrer = "Google";
+      else if (referrer.includes("instagram")) referrer = "Instagram";
 
-        // 6. الإرسال للداتابيز وحفظ الـ ID
-        // 👇 التعديل المهم هنا 👇
-        const { data, error } = await supabase.from('site_visits').insert([{
-          country: locationData.country_name || 'Unknown',
-          city: locationData.city || 'Unknown',
-          device_type: isMobile ? 'Mobile' : 'Desktop',
-          user_agent: navigator.userAgent,
-          isp: locationData.org || 'Unknown',
-          referrer: referrer,
-          screen_res: screenRes,
-          browser_lang: navigator.language
-        }])
-          .select() // 👈 هات البيانات اللي اتسجلت
-          .single() // 👈 هات صف واحد بس
+      const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-        if (error) throw error
+      // 6. الإرسال للداتابيز
+      const { data, error } = await supabase.from('site_visits').insert([{
+        country: locationData.country_name || 'Unknown',
+        city: locationData.city || 'Unknown',
+        device_type: isMobile ? 'Mobile' : 'Desktop',
+        user_agent: navigator.userAgent,
+        isp: locationData.org || 'Unknown',
+        referrer: referrer,
+        screen_res: screenRes,
+        browser_lang: navigator.language
+      }])
+        .select()
+        .single()
 
-        // ✅ حفظنا الـ ID بتاع الزيارة دي عشان نستخدمه لما يشوف منتج
+      if (error) {
+        console.error("❌ Supabase Insert Error:", error.message) // لو فيه مشكلة هنا هتظهرلك في الكونسول
+      } else {
+        console.log("✅ Success! Visit Recorded ID:", data.id)
+
+        // حفظنا الـ ID عشان رحلة العميل
         if (data) {
           sessionStorage.setItem('current_visit_id', data.id)
           sessionStorage.setItem('visited_session', 'true')
         }
-
-      } catch (error) {
-        console.error("Tracking Error (Site works fine):", error)
       }
     }
 
@@ -150,13 +160,8 @@ function App() {
               <DashboardLayout />
             </RequireAuth>
           }>
-            {/* الصفحة الرئيسية (الإحصائيات) */}
             <Route index element={<DashboardHome />} />
-
-            {/* صفحة الطلبات */}
             <Route path="orders" element={<Orders />} />
-
-            {/* صفحة المنتجات */}
             <Route path="products" element={<Products />} />
 
             {/* صفحة سجل الزوار */}
@@ -166,20 +171,17 @@ function App() {
               </RequireAuth>
             } />
 
-            {/* صفحة المستخدمين (للمدير فقط) */}
             <Route path="users" element={
               <RequireAuth allowedRoles={['admin']}>
                 <Users />
               </RequireAuth>
             } />
 
-            {/* صفحة الإعدادات (للمدير فقط) */}
             <Route path="settings" element={
               <RequireAuth allowedRoles={['admin']}>
                 <Settings />
               </RequireAuth>
             } />
-
           </Route>
 
         </Routes>
