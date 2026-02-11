@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag, Phone } from 'lucide-react'
+// 👇 ضفتلك أيقونة Store عشان خيار الاستلام
+import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag, Phone, Store } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
@@ -47,6 +48,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [pickerHex, setPickerHex] = useState('#ffffff')
   const [notes, setNotes] = useState('')
 
+  // 👇 حالة جديدة لطريقة الاستلام (شحن ولا استلام)
+  const [deliveryMethod, setDeliveryMethod] = useState('shipping') // 'shipping' or 'pickup'
+
   // Location States
   const [locationLink, setLocationLink] = useState('')
   const [isLocating, setIsLocating] = useState(false)
@@ -67,7 +71,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  const shippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
+  // 👇 تعديل حساب الشحن: لو استلام يبقى صفر، لو شحن يبقى حسب المحافظة
+  const baseShippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
+  const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee
 
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +96,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       setGpsError('')
       setCouponCode('')
       setAppliedCoupon(null)
+      setDeliveryMethod('shipping') // Reset to shipping default
       setCouponMsg({ type: '', text: '' })
     }
   }, [product, isOpen])
@@ -330,8 +337,12 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     e.preventDefault()
     if (!customerName.trim()) { alert('Please enter name'); return }
     if (!phone.trim()) { alert('Please enter phone number'); return }
-    if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
-    // 🛑 تم حذف شرط إجبارية العنوان من هنا
+
+    // 👇 التحقق من العنوان فقط لو الشحن مختار
+    if (deliveryMethod === 'shipping') {
+      if (!governorate) { alert('Please select your city for shipping'); return }
+      if (!address.trim()) { alert('Please enter detailed address'); return }
+    }
 
     if (selectedFile) setIsUploading(true)
 
@@ -341,12 +352,16 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (!uploadedImageUrl) { setIsUploading(false); return }
     }
 
+    // تجهيز بيانات الموقع لو استلام
+    const finalGovernorate = deliveryMethod === 'pickup' ? "Alexandria (Pickup)" : governorate
+    const finalAddress = deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : address
+
     try {
       const { error: orderError } = await supabase.from('orders').insert([{
         customer_name: customerName,
         phone: phone,
-        governorate: governorate,
-        address: address, // لو فاضي هيبعت نص فاضي عادي
+        governorate: finalGovernorate,
+        address: finalAddress,
         total_price: grandTotal,
         shipping_fee: shippingFee,
         status: 'pending',
@@ -357,7 +372,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
           customText: customText,
           bgColor: bgColor,
           coupon: appliedCoupon ? appliedCoupon.code : null,
-          refImage: uploadedImageUrl
+          refImage: uploadedImageUrl,
+          deliveryMethod: deliveryMethod // بنسجل طريقة التوصيل
         },
         notes: notes
       }])
@@ -373,31 +389,35 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       console.error(err)
     }
 
-    // 👇👇👇👇 بناء الرسالة الاحترافية للواتساب 👇👇👇👇
+    // 👇👇👇👇 الرسالة (ستايل الفاتورة الرسمية) 👇👇👇👇
 
-    // 1. العنوان الرئيسي
     let message = `*NEW ORDER REQUEST* 🛒\n`;
     message += `Product: *${product.title}*\n`;
     message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
     message += `--------------------------------\n`;
 
-    // 2. قسم العميل
+    // بيانات العميل والتوصيل
     message += `*CUSTOMER DETAILS*\n`;
     message += `> Name: ${customerName}\n`;
     message += `> Phone: ${phone}\n`;
-    message += `> City: ${governorate}\n`;
-    message += `> Address: ${address || "Not Provided"}\n`;
-    if (locationLink) message += `> GPS: ${locationLink}\n`;
+
+    // 👇 تغيير الرسالة حسب طريقة الاستلام
+    if (deliveryMethod === 'pickup') {
+      message += `> Type: *PICKUP @ HENAWY'S ART* 🏠\n`;
+    } else {
+      message += `> Type: Home Delivery 🚚\n`;
+      message += `> City: ${governorate}\n`;
+      message += `> Address: ${address}\n`;
+      if (locationLink) message += `> GPS: ${locationLink}\n`;
+    }
     message += `\n`;
 
-    // 3. قسم المواصفات
     message += `*ORDER SPECIFICATIONS*\n`;
     if (customText) message += `• Text/Date: "${customText}"\n`;
     if (bgColor) message += `• Color: ${bgColor}\n`;
     if (notes) message += `• Notes: ${notes}\n`;
     if (uploadedImageUrl) message += `• Reference: Attached (Link below)\n`;
 
-    // 4. الإضافات (بدون إيموجي)
     const selectedList = Object.values(selections);
     if (selectedList.length > 0) {
       message += `\n*SELECTED ADD-ONS*\n`;
@@ -409,30 +429,35 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
     message += `--------------------------------\n`;
 
-    // 5. الحساب (شكل فاتورة)
     message += `*PAYMENT BREAKDOWN*\n`;
 
     if (product.is_starting_price) {
       message += `Base Price: Starts from ${product.price} EGP\n`;
       message += `(Final price TBD upon confirmation)\n`;
     } else {
-      // السعر الأساسي
-      message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
+      if (selectedList.length > 0) {
+        message += `Item Price (with Add-ons): ${productTotalBeforeDiscount} EGP\n`;
+      } else {
+        message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
+      }
 
-      // الخصم
       if (appliedCoupon) {
         message += `Coupon (${appliedCoupon.code}): -${discountAmount} EGP\n`;
         message += `Net Item Price: ${finalProductPrice} EGP\n`;
       }
 
-      // الشحن والإجمالي
-      message += `Shipping: ${shippingFee} EGP\n`;
+      // توضيح الشحن في الحساب
+      if (deliveryMethod === 'pickup') {
+        message += `Shipping: 0 EGP (Pickup)\n`;
+      } else {
+        message += `Shipping Fee: ${shippingFee} EGP\n`;
+      }
+
       message += `========================\n`;
       message += `*TOTAL: ${grandTotal} EGP*\n`;
       message += `========================\n`;
     }
 
-    // 6. السياسات (بشكل تنبيه نصي)
     message += `\n*IMPORTANT NOTES*\n`;
     message += `1. Delivery: 10-14 Working Days.\n`;
     message += `2. Payment: 50% Deposit required via Wallet.\n`;
@@ -441,7 +466,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       message += `\nRef Image Link:\n${uploadedImageUrl}`;
     }
 
-    // التشفير والإرسال
     const encodedMessage = encodeURIComponent(message);
     const myNumber = "201280140268";
 
@@ -486,7 +510,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <div className="text-xs text-white/90 flex flex-wrap items-center gap-2 mt-1 font-medium">
                     <span className="bg-white/10 px-2 py-0.5 rounded">Item: {finalProductPrice}</span>
                     <span>+</span>
-                    <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
+                    {deliveryMethod === 'pickup' ? (
+                      <span className="flex items-center bg-green-500/20 px-2 py-0.5 rounded text-white"><Store size={10} className="mr-1" /> Pickup: Free</span>
+                    ) : (
+                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -616,48 +644,83 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               )}
 
-              {/* Address Section */}
+              {/* Address Section with Delivery Method */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Full Name <span className="text-red-500">*</span></label>
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none" required />
                 </div>
 
+                {/* 👇 خيارات التوصيل (جديد) */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                    <MapPin size={16} className="text-primary" /> Governorate <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={governorate}
-                      onChange={e => setGovernorate(e.target.value)}
-                      className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 appearance-none cursor-pointer outline-none focus:border-primary ${gpsError ? 'border-yellow-400' : ''}`}
-                      required
-                      disabled={true}
+                  <label className="block text-sm font-bold text-gray-700 mb-3">Delivery Method</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div
+                      onClick={() => setDeliveryMethod('shipping')}
+                      className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'shipping'
+                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
                     >
-                      <option value="">{shippingLoading ? "Loading rates..." : "Detected automatically below 👇"}</option>
-                      {shippingRatesList.map(rate => (
-                        <option key={rate.id} value={rate.governorate}>
-                          {rate.governorate} (+{rate.fee} EGP)
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">▼</div>
+                      <Truck size={18} /> Home Delivery
+                    </div>
+                    <div
+                      onClick={() => setDeliveryMethod('pickup')}
+                      className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'pickup'
+                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                    >
+                      <Store size={18} /> Pickup (Henawy's)
+                    </div>
                   </div>
-                  {gpsError && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    {/* 👇 تم التعديل: شيلنا النجمة الحمراء */}
-                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address (Optional)</label>
-                    <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1 transition-all shadow-sm ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
-                      {isLocating ? <><Loader2 size={12} className="animate-spin" /> Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My Location</>}
-                    </button>
-                  </div>
-                  {/* 👇 تم التعديل: شيلنا خاصية required */}
-                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} />
-                </div>
+                {/* 👇 المحافظة والعنوان يظهروا فقط في حالة الشحن */}
+                <AnimatePresence>
+                  {deliveryMethod === 'shipping' && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="space-y-4 overflow-hidden"
+                    >
+                      <div>
+                        <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                          <MapPin size={16} className="text-primary" /> Governorate <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={governorate}
+                            onChange={e => setGovernorate(e.target.value)}
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 appearance-none cursor-pointer outline-none focus:border-primary ${gpsError ? 'border-yellow-400' : ''}`}
+                            required={deliveryMethod === 'shipping'} // اجباري فقط لو شحن
+                            disabled={true}
+                          >
+                            <option value="">{shippingLoading ? "Loading rates..." : "Detected automatically below 👇"}</option>
+                            {shippingRatesList.map(rate => (
+                              <option key={rate.id} value={rate.governorate}>
+                                {rate.governorate} (+{rate.fee} EGP)
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">▼</div>
+                        </div>
+                        {gpsError && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address <span className="text-red-500">*</span></label>
+                          <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1 transition-all shadow-sm ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
+                            {isLocating ? <><Loader2 size={12} className="animate-spin" /> Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My Location</>}
+                          </button>
+                        </div>
+                        <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required={deliveryMethod === 'shipping'} />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes..." />
               </div>
