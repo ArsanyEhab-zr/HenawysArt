@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
     Plus, Search, Edit, Trash2, X,
-    Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle, Sparkles, Eye, ChevronLeft, ChevronRight, Upload
+    Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle, Sparkles, Eye, Upload
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+// 👇 استيراد مكتبة الضغط
+import imageCompression from 'browser-image-compression'
 
 const Products = () => {
     const [products, setProducts] = useState([])
@@ -25,7 +27,7 @@ const Products = () => {
         stock: 0,
         category: '',
         description: '',
-        images: [], // 👈 مصفوفة للصور المتعددة
+        images: [],
         is_starting_price: false,
         is_new_arrival: false
     })
@@ -76,7 +78,6 @@ const Products = () => {
         const defaultCategory = categories.length > 0 ? categories[0].slug : ''
         if (product) {
             setEditingProduct(product)
-            // منطق ذكي للتعامل مع الصور (سواء كانت مصفوفة أو نص واحد قديم)
             let currentImages = [];
             if (Array.isArray(product.images) && product.images.length > 0) {
                 currentImages = product.images;
@@ -110,7 +111,7 @@ const Products = () => {
         setIsModalOpen(true)
     }
 
-    // دالة رفع الصور المتعددة
+    // 👇👇 دالة الرفع الاحترافية (ضغط + تحويل WebP) 👇👇
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files)
         if (files.length === 0) return
@@ -118,14 +119,26 @@ const Products = () => {
         setUploadingImages(true)
         const newImageUrls = []
 
+        // إعدادات الضغط
+        const options = {
+            maxSizeMB: 0.8,          // أقصى حجم للصورة (أقل من 1 ميجا)
+            maxWidthOrHeight: 1920,  // أقصى أبعاد (FHD)
+            useWebWorker: true,      // سرعة في الأداء
+            fileType: 'image/webp'   // التحويل لـ WebP إجباري
+        }
+
         try {
             for (const file of files) {
-                const fileExt = 'webp' // 👈 إجبار الامتداد ليكون WebP للأداء
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+                // 1. ضغط الصورة وتحويلها
+                const compressedFile = await imageCompression(file, options);
 
+                // 2. تجهيز الاسم الجديد (WebP)
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`
+
+                // 3. الرفع لـ Supabase
                 const { error: uploadError } = await supabase.storage
-                    .from('product-images') // تأكد إن الـ Bucket ده موجود
-                    .upload(fileName, file)
+                    .from('product-images')
+                    .upload(fileName, compressedFile)
 
                 if (uploadError) throw uploadError
 
@@ -136,22 +149,20 @@ const Products = () => {
                 newImageUrls.push(data.publicUrl)
             }
 
-            // تحديث الحالة بإضافة الصور الجديدة للصور القديمة
             setFormData(prev => ({
                 ...prev,
                 images: [...prev.images, ...newImageUrls]
             }))
-            toast.success(`${newImageUrls.length} images uploaded!`)
+            toast.success(`${newImageUrls.length} images compressed & uploaded!`)
 
         } catch (err) {
             console.error("Upload Error:", err)
-            toast.error("Failed to upload images")
+            toast.error("Failed to upload. Check console.")
         } finally {
             setUploadingImages(false)
         }
     }
 
-    // دالة حذف صورة من القائمة
     const removeImage = (indexToRemove) => {
         setFormData(prev => ({
             ...prev,
@@ -159,7 +170,6 @@ const Products = () => {
         }))
     }
 
-    // دالة جعل الصورة هي الرئيسية (الأولى)
     const setMainImage = (indexToMain) => {
         const images = [...formData.images]
         const mainImage = images.splice(indexToMain, 1)[0]
@@ -179,7 +189,6 @@ const Products = () => {
                 stock: Number(formData.stock),
                 category: formData.category,
                 description: formData.description,
-                // بنحفظ المصفوفة كاملة في images وبنحفظ أول صورة في image_url عشان التوافق مع الكود القديم
                 images: formData.images,
                 image_url: formData.images.length > 0 ? formData.images[0] : null,
                 is_starting_price: formData.is_starting_price,
@@ -236,7 +245,6 @@ const Products = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Products Inventory</h1>
@@ -247,7 +255,6 @@ const Products = () => {
                 </button>
             </div>
 
-            {/* Search */}
             <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
@@ -259,13 +266,11 @@ const Products = () => {
                 />
             </div>
 
-            {/* Grid */}
             {loading ? (
                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" size={40} /></div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map(product => {
-                        // عرض الصورة الأولى أو القديمة
                         const displayImage = (product.images && product.images.length > 0) ? product.images[0] : product.image_url;
 
                         return (
@@ -278,7 +283,6 @@ const Products = () => {
                                         onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Error' }}
                                     />
 
-                                    {/* Badges */}
                                     <div className="absolute top-2 left-2 flex flex-col gap-1">
                                         {product.is_new_arrival && (
                                             <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
@@ -292,7 +296,6 @@ const Products = () => {
                                         )}
                                     </div>
 
-                                    {/* Edit Overlay */}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                         <button onClick={() => openModal(product)} className="bg-white p-2 rounded-full text-gray-800 hover:text-blue-600 hover:scale-110 transition-all"><Edit size={20} /></button>
                                         <button onClick={() => handleDelete(product.id)} className="bg-white p-2 rounded-full text-gray-800 hover:text-red-600 hover:scale-110 transition-all"><Trash2 size={20} /></button>
@@ -320,7 +323,6 @@ const Products = () => {
                 </div>
             )}
 
-            {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
@@ -331,28 +333,22 @@ const Products = () => {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-                            {/* Image Gallery Manager */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-bold text-gray-700">Product Images</label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                    {/* Upload Button */}
                                     <div className="relative group cursor-pointer aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-primary hover:bg-primary/5 transition-all">
                                         {uploadingImages ? <Loader2 className="animate-spin text-primary" /> : <Plus className="text-gray-400" size={32} />}
                                         <span className="text-xs text-gray-500 mt-1">Add Images</span>
                                         <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" disabled={uploadingImages} />
                                     </div>
 
-                                    {/* Image List */}
                                     {formData.images.map((img, idx) => (
                                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group">
                                             <img src={img} alt={`img-${idx}`} className="w-full h-full object-cover" />
-                                            {/* Remove Button */}
                                             <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <X size={12} />
                                             </button>
-                                            {/* Main Image Badge */}
                                             {idx === 0 && <span className="absolute bottom-0 inset-x-0 bg-primary/80 text-white text-[10px] text-center py-0.5 font-bold">Main</span>}
-                                            {/* Make Main Button */}
                                             {idx !== 0 && (
                                                 <button type="button" onClick={() => setMainImage(idx)} className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] py-1 rounded opacity-0 group-hover:opacity-100 hover:bg-primary transition-all">
                                                     Make Main
@@ -364,7 +360,6 @@ const Products = () => {
                                 <p className="text-xs text-gray-400">First image is the main cover. Click 'Make Main' to reorder.</p>
                             </div>
 
-                            {/* Inputs Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -401,7 +396,6 @@ const Products = () => {
                                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 resize-none h-24" />
                             </div>
 
-                            {/* Switches */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer" onClick={() => setFormData({ ...formData, is_starting_price: !formData.is_starting_price })}>
                                     <input type="checkbox" checked={formData.is_starting_price} readOnly className="w-5 h-5 text-primary rounded" />
