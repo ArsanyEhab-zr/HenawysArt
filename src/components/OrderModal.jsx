@@ -372,80 +372,130 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (err) {
       console.error(err)
     }
+    const handleSubmit = async (e) => {
+      e.preventDefault()
+      if (!customerName.trim()) { alert('Please enter name'); return }
+      if (!phone.trim()) { alert('Please enter phone number'); return }
+      if (!governorate) { alert('Please use the "Detect My City" button to select your location'); return }
+      if (!address.trim()) { alert('Please enter detailed address'); return }
 
-    // 👇👇👇👇 بناء الرسالة الاحترافية للواتساب 👇👇👇👇
+      if (selectedFile) setIsUploading(true)
 
-    // 1. المقدمة
-    let message = `Hello, I would like to order: *${product.title}* 🎨\n`;
+      let uploadedImageUrl = ''
+      if (selectedFile) {
+        uploadedImageUrl = await uploadImage(selectedFile)
+        if (!uploadedImageUrl) { setIsUploading(false); return }
+      }
 
-    // 2. بيانات العميل
-    message += `\n👤 *Customer Info*`;
-    message += `\nName: ${customerName}`;
-    message += `\n📱 Phone: ${phone}`;
-    message += `\n📍 City: ${governorate}`;
-    message += `\n🏠 Address: ${address}`;
-    if (locationLink) message += `\n🌍 GPS: ${locationLink}`;
+      try {
+        const { error: orderError } = await supabase.from('orders').insert([{
+          customer_name: customerName,
+          phone: phone,
+          governorate: governorate,
+          address: address,
+          total_price: grandTotal,
+          shipping_fee: shippingFee,
+          status: 'pending',
+          items: {
+            productId: product.id,
+            productName: product.title,
+            addons: selections,
+            customText: customText,
+            bgColor: bgColor,
+            coupon: appliedCoupon ? appliedCoupon.code : null,
+            refImage: uploadedImageUrl
+          },
+          notes: notes
+        }])
 
-    // 3. التخصيص (الألوان والنصوص)
-    message += `\n\n✨ *Customizations*`;
-    if (customText) message += `\n✍️ Text/Date: "${customText}"`;
-    if (bgColor) message += `\n🎨 Bg Color: ${bgColor}`;
-    if (uploadedImageUrl) message += `\n🖼️ Reference Image: Attached (Link Generated)`;
-    if (notes) message += `\n📝 Notes: ${notes}`;
+        if (orderError) console.error("Dashboard insert failed", orderError)
 
-    // 4. الإضافات (Addons)
-    const selectedList = Object.values(selections);
-    if (selectedList.length > 0) {
-      message += `\n\n➕ *Selected Add-ons*`;
-      selectedList.forEach(addon => {
-        let priceIndicator = '';
-        if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
-        message += `\n✅ ${addon.title}${priceIndicator}`;
-      });
-    }
+        await supabase.rpc('increment_sold_count', { product_id: product.id })
 
-    // 5. الحساب والتفاصيل المالية
-    message += `\n\n💰 *Payment Breakdown*`;
-    if (product.is_starting_price) {
-      message += `\nBase Price Starts from: ${product.price} EGP (To be confirmed)`;
-    } else {
-      // تفاصيل السعر قبل الخصم
+        if (appliedCoupon) {
+          await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
+        }
+      } catch (err) {
+        console.error(err)
+      }
+
+      // 👇👇👇👇 الرسالة الجديدة (ستايل الفاتورة الرسمية) 👇👇👇👇
+
+      // 1. العنوان الرئيسي
+      let message = `*NEW ORDER REQUEST* 🛒\n`;
+      message += `Product: *${product.title}*\n`;
+      message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
+      message += `--------------------------------\n`;
+
+      // 2. قسم العميل
+      message += `*CUSTOMER DETAILS*\n`;
+      message += `> Name: ${customerName}\n`;
+      message += `> Phone: ${phone}\n`;
+      message += `> City: ${governorate}\n`;
+      message += `> Address: ${address}\n`;
+      if (locationLink) message += `> GPS: ${locationLink}\n`;
+      message += `\n`;
+
+      // 3. قسم المواصفات
+      message += `*ORDER SPECIFICATIONS*\n`;
+      if (customText) message += `• Text/Date: "${customText}"\n`;
+      if (bgColor) message += `• Color: ${bgColor}\n`;
+      if (notes) message += `• Notes: ${notes}\n`;
+      if (uploadedImageUrl) message += `• Reference: Attached (Link below)\n`;
+
+      // 4. الإضافات (بدون إيموجي)
+      const selectedList = Object.values(selections);
       if (selectedList.length > 0) {
-        message += `\nItem + Addons: ${productTotalBeforeDiscount} EGP`;
+        message += `\n*SELECTED ADD-ONS*\n`;
+        selectedList.forEach(addon => {
+          let priceIndicator = '';
+          if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
+          message += `[+] ${addon.title}${priceIndicator}\n`;
+        });
+      }
+      message += `--------------------------------\n`;
+
+      // 5. الحساب (شكل فاتورة)
+      message += `*PAYMENT BREAKDOWN*\n`;
+
+      if (product.is_starting_price) {
+        message += `Base Price: Starts from ${product.price} EGP\n`;
+        message += `(Final price TBD upon confirmation)\n`;
       } else {
-        message += `\nItem Price: ${productTotalBeforeDiscount} EGP`;
+        // السعر الأساسي
+        message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
+
+        // الخصم
+        if (appliedCoupon) {
+          message += `Coupon (${appliedCoupon.code}): -${discountAmount} EGP\n`;
+          message += `Net Item Price: ${finalProductPrice} EGP\n`;
+        }
+
+        // الشحن والإجمالي
+        message += `Shipping: ${shippingFee} EGP\n`;
+        message += `========================\n`;
+        message += `*TOTAL: ${grandTotal} EGP*\n`;
+        message += `========================\n`;
       }
 
-      // تفاصيل الكوبون
-      if (appliedCoupon) {
-        message += `\n🎫 Coupon (${appliedCoupon.code}): -${discountAmount} EGP`;
-        message += `\n📉 Price after Discount: ${finalProductPrice} EGP`;
+      // 6. السياسات (بشكل تنبيه نصي)
+      message += `\n*IMPORTANT NOTES*\n`;
+      message += `1. Delivery: 10-14 Working Days.\n`;
+      message += `2. Payment: 50% Deposit required via Wallet.\n`;
+
+      if (uploadedImageUrl) {
+        message += `\nRef Image Link:\n${uploadedImageUrl}`;
       }
 
-      // الشحن والاجمالي
-      message += `\n🚚 Shipping: ${shippingFee} EGP`;
-      message += `\n━━━━━━━━━━━━━━`;
-      message += `\n💵 *TOTAL REQUIRED: ${grandTotal} EGP*`;
+      // التشفير والإرسال
+      const encodedMessage = encodeURIComponent(message);
+      const myNumber = "201280140268";
+
+      window.open(`https://api.whatsapp.com/send?phone=${myNumber}&text=${encodedMessage}`, '_blank');
+
+      setIsUploading(false)
+      onClose()
     }
-
-    // 6. الخاتمة والسياسات
-    message += `\n\n⚠️ *Policy Agreement:*`;
-    message += `\n• Delivery Time: 10-14 days.`;
-    message += `\n• Payment: 50% Deposit via Wallet (🚫 No InstaPay).`;
-
-    if (uploadedImageUrl) {
-      message += `\n\n📎 Image Link: ${uploadedImageUrl}`;
-    }
-
-    // 👇👇👇 الحل الجذري لمشكلة الإيموجي والروابط 👇👇👇
-    const encodedMessage = encodeURIComponent(message);
-    const myNumber = "201280140268"; // 👈 حط رقمك هنا
-
-    window.open(`https://wa.me/${myNumber}?text=${encodedMessage}`, '_blank');
-
-    setIsUploading(false)
-    onClose()
-  }
 
   return (
     <AnimatePresence>
@@ -692,5 +742,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       )}
     </AnimatePresence>
   )
+}
 }
 export default OrderModal
