@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+// 👇 السطر ده هو اللي كان ناقصه Clock
 import {
-    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck
+    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -81,7 +82,6 @@ const Orders = () => {
         }
     }
 
-    // 👇 دالة أمان للتاريخ عشان ميعملش Crash
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         try {
@@ -93,7 +93,6 @@ const Orders = () => {
         }
     }
 
-    // 👇 دالة أمان للحالة عشان لو الحالة مش موجودة ميعملش Crash
     const getStatusInfo = (status) => {
         return STATUS_OPTIONS.find(s => s.value === status) || {
             value: status,
@@ -119,7 +118,6 @@ const Orders = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -155,7 +153,6 @@ const Orders = () => {
                 </div>
             </div>
 
-            {/* Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
                     <div className="p-20 text-center flex flex-col items-center justify-center gap-3">
@@ -178,7 +175,7 @@ const Orders = () => {
                             <tbody className="divide-y divide-gray-50">
                                 {filteredOrders.map((order, index) => {
                                     const statusInfo = getStatusInfo(order.status);
-                                    const items = order.items || {}; // أمان عشان لو items فاضي
+                                    const items = order.items || {};
 
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -267,12 +264,10 @@ const Orders = () => {
                 )}
             </div>
 
-            {/* Modal */}
             {selectedOrder && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedOrder(null)}>
                     <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
-                        {/* Modal Header */}
                         <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="bg-white p-2 rounded-lg border shadow-sm"><PackageCheck className="text-primary" size={20} /></div>
@@ -284,9 +279,7 @@ const Orders = () => {
                             <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-red-500 transition-colors p-1 hover:bg-gray-200 rounded-full"><XCircle size={24} /></button>
                         </div>
 
-                        {/* Modal Body */}
                         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                            {/* Customer Info */}
                             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                                 <h4 className="text-xs font-bold uppercase text-blue-800 mb-3 flex items-center gap-2"><Phone size={12} /> Customer Information</h4>
                                 <div className="grid grid-cols-2 gap-4">
@@ -302,10 +295,8 @@ const Orders = () => {
                                 </div>
                             </div>
 
-                            {/* Product Details */}
-                            {/* 👇 هنا الجزء اللي كان بيعمل كراش لو items فاضي */}
                             {(() => {
-                                const items = selectedOrder.items || {}; // أمان
+                                const items = selectedOrder.items || {};
                                 return (
                                     <div>
                                         <h4 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">Product Details</h4>
@@ -343,7 +334,6 @@ const Orders = () => {
                             )}
                         </div>
 
-                        {/* Modal Footer */}
                         <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusInfo(selectedOrder.status).color}`}>
                                 Status: {getStatusInfo(selectedOrder.status).label}
