@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../supabaseClient' // 👈 تأكد من مسار ملف Supabase حسب مكان الملف
+import { supabase } from '../supabaseClient' // ✅ كدة صح
 import { Users, TrendingUp, TrendingDown, Loader2, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
