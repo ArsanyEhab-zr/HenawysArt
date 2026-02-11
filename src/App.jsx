@@ -44,24 +44,46 @@ const Layout = ({ children }) => {
 }
 
 function App() {
-
-  // 👇👇👇 كود التتبع المطور (Enhanced Tracker) 👇👇👇
+  
+  // 👇👇👇 كود التتبع الذكي (Smart Tracker) 👇👇👇
   useEffect(() => {
     const recordVisit = async () => {
-      // 1. منع التكرار في نفس الجلسة
+      // 1. الفلتر الأول: لو الزائر ده مسجل عندنا في نفس الجلسة، تجاهله
       const hasVisited = sessionStorage.getItem('visited_session')
       if (hasVisited) return
 
+      // 🛑 2. الفلتر الثاني: كشف البوتات (Anti-Bot Check)
+      // بنفحص "بصمة" المتصفح عشان نعرف هل هو روبوت ولا بني آدم
+      const userAgent = navigator.userAgent.toLowerCase()
+      const isBot =
+        userAgent.includes('bot') ||        // جوجل وغيره
+        userAgent.includes('crawler') ||    // زواحف الأرشفة
+        userAgent.includes('spider') ||     // عناكب البحث
+        userAgent.includes('headless') ||   // متصفحات الكود (زي اللي ظهرلك)
+        userAgent.includes('lighthouse') || // أداة قياس الأداء
+        navigator.webdriver                 // خاصية بتبقى True لو المتصفح شغال ببرنامج تحكم آلي
+
+      if (isBot) {
+        console.log("🤖 Bot detected! Visit ignored.")
+        return // ⛔ وقف هنا ومتكملش الكود، متسجلوش في الداتابيز
+      }
+
       try {
-        // 2. جلب بيانات الموقع والشبكة
+        // 3. لو عدى من الفلتر، هات بياناته
         const res = await fetch('https://ipapi.co/json/')
         if (!res.ok) throw new Error('Location API failed')
         const locationData = await res.json()
 
-        // 3. تحديد نوع الجهاز
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        // 4. فلتر إضافي: لو شركة النت هي داتا سنتر (زي أمازون وجوجل كلاود) تجاهله
+        // لأن مفيش بني آدم عادي بيفتح نت من داتا سنتر
+        const org = (locationData.org || '').toLowerCase()
+        if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) {
+          console.log("🏢 Data Center traffic detected! Visit ignored.")
+          return
+        }
 
-        // 4. تجميع المعلومات الإضافية (المصدر، الشاشة، اللغة)
+        // 5. باقي الكود العادي.. تسجيل البيانات
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
         let referrer = document.referrer || "Direct / Typed URL";
         if (referrer.includes("facebook")) referrer = "Facebook";
         else if (referrer.includes("google")) referrer = "Google";
@@ -69,20 +91,17 @@ function App() {
 
         const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-        // 5. إرسال البيانات لسوبا بيز (شاملة الأعمدة الجديدة)
         await supabase.from('site_visits').insert([{
           country: locationData.country_name || 'Unknown',
           city: locationData.city || 'Unknown',
           device_type: isMobile ? 'Mobile' : 'Desktop',
           user_agent: navigator.userAgent,
-          // 👇 البيانات الجديدة
           isp: locationData.org || 'Unknown',
           referrer: referrer,
           screen_res: screenRes,
           browser_lang: navigator.language
         }])
 
-        // 6. علم عليه إنه اتسجل
         sessionStorage.setItem('visited_session', 'true')
 
       } catch (error) {
@@ -92,7 +111,6 @@ function App() {
 
     recordVisit()
   }, [])
-  // 👆👆👆 نهاية كود التتبع 👆👆👆
 
   return (
     <Router>
