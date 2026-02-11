@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-// 👇 السطر ده هو اللي كان ناقصه Clock
 import {
     Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock
 } from 'lucide-react'
@@ -164,7 +163,8 @@ const Orders = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs border-b border-gray-100 tracking-wider">
                                 <tr>
-                                    <th className="p-4 w-16 text-center">#</th>
+                                    {/* 👇 غيرت العنوان هنا عشان يبقى واضح إنه ID */}
+                                    <th className="p-4 w-16 text-center">ID</th>
                                     <th className="p-4">Customer Details</th>
                                     <th className="p-4">Product Info</th>
                                     <th className="p-4">Location</th>
@@ -173,15 +173,16 @@ const Orders = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredOrders.map((order, index) => {
+                                {filteredOrders.map((order) => {
                                     const statusInfo = getStatusInfo(order.status);
                                     const items = order.items || {};
 
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
                                             <td className="p-4 text-center">
-                                                <span className="bg-gray-100 text-gray-500 font-mono text-[10px] px-2 py-1 rounded-md">
-                                                    {filteredOrders.length - index}
+                                                {/* 👇 التعديل هنا: عرض الـ ID الحقيقي بدل الترتيب */}
+                                                <span className="bg-gray-100 text-gray-600 font-mono font-bold text-[11px] px-2 py-1 rounded-md border border-gray-200">
+                                                    #{order.id}
                                                 </span>
                                             </td>
                                             <td className="p-4">
