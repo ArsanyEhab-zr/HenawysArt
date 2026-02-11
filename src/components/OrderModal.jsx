@@ -439,7 +439,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
     // 👇👇👇 الحل الجذري لمشكلة الإيموجي والروابط 👇👇👇
     const encodedMessage = encodeURIComponent(message);
-    const myNumber = "201xxxxxxxxx"; // 👈 حط رقمك هنا
+    const myNumber = "201280140268"; // 👈 حط رقمك هنا
 
     window.open(`https://wa.me/${myNumber}?text=${encodedMessage}`, '_blank');
 
