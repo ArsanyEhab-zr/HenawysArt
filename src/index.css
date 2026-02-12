@@ -65,40 +65,91 @@
     background: radial-gradient(circle, rgba(94, 146, 184, 0.08) 0%, transparent 70%);
   }
 }
-
 /* =========================================
-   إخفاء شريط وأدوات جوجل (Fixed & Safe)
+   إخفاء آثار جوجل للترجمة نهائياً
    ========================================= */
 
-/* إخفاء البانر العلوي تماماً */
+/* 1. إخفاء البانر الأزرق اللي بيظهر فوق */
 .goog-te-banner-frame.skiptranslate {
   display: none !important;
 }
 
-/* منع جوجل من إنه يزق الصفحة لتحت */
+/* 2. منع جوجل من إنه يزق الصفحة لتحت 40 بكسل */
 body {
   top: 0px !important;
 }
 
-/* إخفاء لوجو جوجل اللي بيظهر جنب الكلام */
+/* 3. إخفاء جملة "Powered by Google" واللوجو */
+.goog-te-gadget {
+  color: transparent !important;
+  /* يخفي لون الكلام */
+  font-size: 0 !important;
+  /* يخلي حجم الخط صفر عشان المساحة تختفي */
+}
+
+/* 4. إخفاء أيقونة جوجل الصغيرة */
+.goog-te-gadget .goog-te-gadget-icon {
+  display: none !important;
+}
+
+/* 5. إخفاء اللينك بتاع جوجل */
 .goog-logo-link {
   display: none !important;
 }
 
-/* إخفاء نص "Powered by Google" */
-.goog-te-gadget {
-  color: transparent !important;
-  font-size: 0 !important;
-}
-
-/* إخفاء التلميحات (Tooltips) المزعجة */
+/* 6. إخفاء التلميحات (Tooltips) المزعجة لما تقف على كلمة */
 #goog-gt-tt,
 .goog-te-balloon-frame {
   display: none !important;
 }
 
-/* منع ظهور الخطوط الزرقاء على الكلام المترجم */
-font {
-  background-color: transparent !important;
+/* 7. إخفاء الخطوط الملونة اللي بتظهر تحت الكلام المترجم */
+.goog-text-highlight {
+  background: none !important;
   box-shadow: none !important;
+}
+
+/* 8. إخفاء الحاوية الأصلية تماماً (احتياطي) */
+#google_translate_element {
+  display: none !important;
+  visibility: hidden !important;
+}
+/* ... أكوادك القديمة ... */
+
+@layer utilities {
+  /* ... كود watercolor-bg سيبه زي ما هو ... */
+
+  /* 👇👇👇 البداية من هنا: تعميم الدارك مود على الموقع كله 👇👇👇 */
+
+  /* 1. أي حاجة واخدة خلفية بيضا (كروت، أقسام) تقلب كحلي Surface */
+  .dark .bg-white {
+    background-color: theme('colors.night.surface') !important;
+    border-color: theme('colors.gray.700') !important;
+    color: theme('colors.night.text') !important;
+  }
+
+  /* 2. أي حاجة واخدة خلفية رصاصي فاتح (زي الهيرو سكشن) تقلب كحلي غامق BG */
+  .dark .bg-gray-50,
+  .dark .bg-gray-100,
+  .dark .bg-gray-200 {
+    background-color: theme('colors.night.bg') !important;
+    border-color: theme('colors.gray.800') !important;
+    color: theme('colors.night.text') !important;
+  }
+
+  /* 3. قلب النصوص الغامقة لتكون فاتحة */
+  .dark .text-gray-500,
+  .dark .text-gray-600,
+  .dark .text-gray-700,
+  .dark .text-gray-800,
+  .dark .text-gray-900,
+  .dark .text-text {
+    color: theme('colors.gray.200') !important;
+  }
+
+  /* 4. تظبيط الحدود (Borders) عشان متبقاش فاقعة */
+  .dark .border-gray-100,
+  .dark .border-gray-200 {
+    border-color: theme('colors.gray.700') !important;
+  }
 }
