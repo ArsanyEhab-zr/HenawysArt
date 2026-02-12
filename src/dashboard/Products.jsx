@@ -29,6 +29,7 @@ const Products = () => {
         description: '',
         images: [],
         is_starting_price: false,
+        price_note: '', // 👈 ضيف دي هنا
         is_new_arrival: false
     })
 
@@ -93,6 +94,7 @@ const Products = () => {
                 description: product.description || '',
                 images: currentImages,
                 is_starting_price: product.is_starting_price || false,
+                price_note: product.price_note || '', // 👈 تحميل القيمة القديمة
                 is_new_arrival: product.is_new_arrival || false
             })
         } else {
@@ -105,6 +107,7 @@ const Products = () => {
                 description: '',
                 images: [],
                 is_starting_price: false,
+                price_note: '',
                 is_new_arrival: false
             })
         }
@@ -192,6 +195,7 @@ const Products = () => {
                 images: formData.images,
                 image_url: formData.images.length > 0 ? formData.images[0] : null,
                 is_starting_price: formData.is_starting_price,
+                price_note: formData.price_note, // 👈 حفظ القيمة في الداتا بيز
                 is_new_arrival: formData.is_new_arrival
             }
 
@@ -399,7 +403,20 @@ const Products = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer" onClick={() => setFormData({ ...formData, is_starting_price: !formData.is_starting_price })}>
                                     <input type="checkbox" checked={formData.is_starting_price} readOnly className="w-5 h-5 text-primary rounded" />
-                                    <span className="text-sm font-medium text-gray-700">Is "Starting Price"?</span>
+                                    <div className="flex-1">
+                                        <span className="text-sm font-medium text-gray-700">Is "Starting Price"?</span>
+                                        {/* خانة الكتابة ظهرت هنا */}
+                                        {formData.is_starting_price && (
+                                            <input
+                                                type="text"
+                                                value={formData.price_note}
+                                                onChange={(e) => setFormData({ ...formData, price_note: e.target.value })}
+                                                onClick={(e) => e.stopPropagation()} // عشان ميقفلش الشيك بوكس لما تكتب
+                                                className="w-full mt-2 px-3 py-1.5 border rounded focus:ring-2 focus:ring-primary/20 text-sm"
+                                                placeholder="Depends on... (e.g. Size)"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100 cursor-pointer" onClick={() => setFormData({ ...formData, is_new_arrival: !formData.is_new_arrival })}>
                                     <input type="checkbox" checked={formData.is_new_arrival} readOnly className="w-5 h-5 text-purple-600 rounded" />

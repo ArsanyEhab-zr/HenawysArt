@@ -131,14 +131,30 @@ const ProductCard = ({ product, onOrderClick }) => {
                 {product.price} EGP
             </span>
 
-            {/* بادج صغير يوضح إن السعر حسب المقاس */}
-            {product.is_starting_price && !isSoldOut && (
-                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-auto">
-                Depends on size
-                </span>
+          {/* 👇👇 التعديل الجديد: السعر بيبدأ من + الملاحظة الديناميكية 👇👇 */}
+          <div className="flex items-end gap-2 mb-4">
+
+            {product.is_starting_price && (
+              <span className="text-sm text-gray-500 font-medium mb-1">
+                Starts from
+              </span>
             )}
+
+            <span className={`text-xl font-semibold ${isSoldOut ? 'text-gray-400 line-through' : 'text-primary'}`}>
+              {product.price} EGP
+            </span>
+
+            {/* 🌟 التعديل الديناميكي هنا 🌟 */}
+            {product.is_starting_price && !isSoldOut && (
+              <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full ml-auto max-w-[100px] truncate">
+                {/* لو كتبت حاجة في الداتا بيز هتظهر، لو مكتبتش هتظهر Depends on Details */}
+                Depends on {product.price_note || 'Details'}
+              </span>
+            )}
+          </div>
+          {/* 👆👆 نهاية التعديل 👆👆 */}
         </div>
-        {/* 👆👆 نهاية التعديل 👆👆 */}
+
 
         <motion.button
           onClick={handleOrder}
