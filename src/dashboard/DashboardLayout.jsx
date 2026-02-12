@@ -10,15 +10,28 @@ import {
     LogOut,
     Menu,
     X,
-    UserCircle
+    UserCircle,
+    Layers, // أيقونة الـ Addons
+    Camera, // أيقونة تغيير الصورة
+    Loader2
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 const DashboardLayout = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false)
     const [userRole, setUserRole] = useState(null)
     const [userName, setUserName] = useState('')
     const [userAvatar, setUserAvatar] = useState(null)
+    const [userId, setUserId] = useState(null) // 👈 حفظنا الـ ID عشان التحديث
     const [loading, setLoading] = useState(true)
+
+    // States for Profile Modal
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+    const [newAvatarFile, setNewAvatarFile] = useState(null)
+    const [newAvatarPreview, setNewAvatarPreview] = useState(null)
+    const [newFullName, setNewFullName] = useState('')
+    const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -32,6 +45,8 @@ const DashboardLayout = () => {
                     return
                 }
 
+                setUserId(user.id)
+
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('role, full_name, avatar_url')
@@ -43,6 +58,9 @@ const DashboardLayout = () => {
                 setUserRole(data?.role)
                 setUserName(data?.full_name || 'Admin')
                 setUserAvatar(data?.avatar_url)
+
+                // Set initial values for modal
+                setNewFullName(data?.full_name || '')
             } catch (error) {
                 console.error('Error fetching profile:', error)
                 navigate('/login')
@@ -60,7 +78,59 @@ const DashboardLayout = () => {
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        navigate('/') // 👈 التعديل هنا: يرجعك للصفحة الرئيسية (Home)
+        navigate('/')
+    }
+
+    // 👇👇 دالة تحديث البروفايل 👇👇
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault()
+        setIsUpdatingProfile(true)
+
+        try {
+            let avatarUrl = userAvatar
+
+            // 1. لو فيه صورة جديدة، ارفعها
+            if (newAvatarFile) {
+                const fileExt = newAvatarFile.name.split('.').pop()
+                const fileName = `avatars/${userId}-${Date.now()}.${fileExt}`
+
+                const { error: uploadError } = await supabase.storage
+                    .from('product-images') // ممكن تعمل bucket مخصص للـ avatars لو حابب
+                    .upload(fileName, newAvatarFile)
+
+                if (uploadError) throw uploadError
+
+                const { data } = supabase.storage
+                    .from('product-images')
+                    .getPublicUrl(fileName)
+
+                avatarUrl = data.publicUrl
+            }
+
+            // 2. تحديث جدول profiles
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: newFullName,
+                    avatar_url: avatarUrl,
+                    updated_at: new Date()
+                })
+                .eq('id', userId)
+
+            if (updateError) throw updateError
+
+            // 3. تحديث الواجهة
+            setUserName(newFullName)
+            setUserAvatar(avatarUrl)
+            toast.success('Profile updated successfully!')
+            setIsProfileModalOpen(false)
+
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to update profile')
+        } finally {
+            setIsUpdatingProfile(false)
+        }
     }
 
     // 3. تعريف القائمة والصلاحيات
@@ -82,6 +152,13 @@ const DashboardLayout = () => {
             icon: Package,
             label: 'Products',
             roles: ['admin', 'employee']
+        },
+        // 👇👇 العنصر الجديد: Add-ons 👇👇
+        {
+            path: '/dashboard/addons',
+            icon: Layers,
+            label: 'Add-ons',
+            roles: ['admin'] // الأدمن بس اللي يعدل الإضافات
         },
         {
             path: '/dashboard/users',
@@ -116,11 +193,11 @@ const DashboardLayout = () => {
 
             {/* ================= Sidebar ================= */}
             <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 
-        transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        lg:relative lg:translate-x-0
-      `}>
+                fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 
+                transform transition-transform duration-300 ease-in-out
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+                lg:relative lg:translate-x-0
+            `}>
                 <div className="h-full flex flex-col">
 
                     {/* Logo Area */}
@@ -133,10 +210,14 @@ const DashboardLayout = () => {
                         </button>
                     </div>
 
-                    {/* User Info Snippet */}
-                    <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                    {/* User Info Snippet (Clickable to Edit) */}
+                    <div
+                        className="p-4 border-b border-gray-50 bg-gray-50/50 cursor-pointer hover:bg-indigo-50/50 transition-colors group relative"
+                        onClick={() => setIsProfileModalOpen(true)}
+                        title="Click to edit profile"
+                    >
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200 relative">
                                 {userAvatar ? (
                                     <img
                                         src={userAvatar}
@@ -147,10 +228,16 @@ const DashboardLayout = () => {
                                 ) : (
                                     <UserCircle size={24} className="text-indigo-600" />
                                 )}
+                                {/* Edit Overlay Icon */}
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Settings size={14} className="text-white" />
+                                </div>
                             </div>
 
                             <div className="overflow-hidden">
-                                <p className="text-sm font-bold text-gray-800 truncate" title={userName}>{userName}</p>
+                                <p className="text-sm font-bold text-gray-800 truncate group-hover:text-indigo-700 transition-colors">
+                                    {userName}
+                                </p>
                                 <p className="text-xs text-gray-500 uppercase tracking-wider">{userRole}</p>
                             </div>
                         </div>
@@ -165,12 +252,12 @@ const DashboardLayout = () => {
                                     to={item.path}
                                     end={item.path === '/dashboard'}
                                     className={({ isActive }) => `
-                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium text-sm
-                    ${isActive
+                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium text-sm
+                                        ${isActive
                                             ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200'
                                             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                         }
-                  `}
+                                    `}
                                 >
                                     <item.icon size={20} className={({ isActive }) => isActive ? 'text-indigo-600' : 'text-gray-400'} />
                                     {item.label}
@@ -210,6 +297,79 @@ const DashboardLayout = () => {
                 </div>
 
             </main>
+
+            {/* 👇👇👇 Profile Edit Modal 👇👇👇 */}
+            {isProfileModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-800">Edit Profile</h3>
+                            <button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
+
+                            {/* Avatar Upload */}
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="relative group cursor-pointer w-24 h-24 rounded-full border-2 border-dashed border-gray-300 hover:border-indigo-500 overflow-hidden">
+                                    {(newAvatarPreview || userAvatar) ? (
+                                        <img
+                                            src={newAvatarPreview || userAvatar}
+                                            alt="Preview"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full h-full bg-gray-50 text-gray-400">
+                                            <UserCircle size={40} />
+                                        </div>
+                                    )}
+
+                                    {/* Overlay */}
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera className="text-white" />
+                                    </div>
+
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0]
+                                            if (file) {
+                                                setNewAvatarFile(file)
+                                                setNewAvatarPreview(URL.createObjectURL(file))
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <span className="text-xs text-gray-500">Tap to change photo</span>
+                            </div>
+
+                            {/* Name Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={newFullName}
+                                    onChange={(e) => setNewFullName(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                    placeholder="Enter your name"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isUpdatingProfile}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                {isUpdatingProfile ? <Loader2 className="animate-spin" size={20} /> : 'Save Changes'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
