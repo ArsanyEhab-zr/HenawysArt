@@ -2,12 +2,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Moon, Sun } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import LanguageToggle from './LanguageToggle' // استدعاء زرار اللغة
+import LanguageToggle from './LanguageToggle'
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false) // حالة الدارك مود
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -16,7 +16,6 @@ const Navbar = () => {
     }
     window.addEventListener('scroll', handleScroll)
 
-    // Check local storage for theme preference
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDarkMode(true)
       document.documentElement.classList.add('dark')
@@ -33,7 +32,6 @@ const Navbar = () => {
     window.scrollTo(0, 0)
   }, [location])
 
-  // دالة تغيير الثيم
   const toggleTheme = () => {
     if (isDarkMode) {
       document.documentElement.classList.remove('dark')
@@ -63,13 +61,13 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      // 👇 تحديث الكلاسات لدعم الدارك مود
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled || isOpen
-        ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-gray-800'
-        : 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm'
+        ? 'bg-white/95 dark:bg-night-surface/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-gray-800'
+        : 'bg-white/90 dark:bg-night-surface/90 backdrop-blur-md shadow-sm'
         }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 👇👇 التعديل هنا: شيلنا max-w-7xl وخليناها w-full عشان تاخد العرض كله 👇👇 */}
+      <div className="w-full px-6 md:px-12">
         <div className="flex items-center justify-between h-20">
 
           {/* Logo Section */}
@@ -100,7 +98,7 @@ const Navbar = () => {
                   whileHover={{ scale: 1.05 }}
                   className={`relative px-4 py-2 rounded-lg transition-colors duration-200 font-medium ${isActive(item.path)
                     ? 'text-primary bg-primary/10'
-                    : 'text-text dark:text-gray-200 hover:text-primary hover:bg-primary/5 dark:hover:bg-gray-800'
+                    : 'text-text dark:text-night-text hover:text-primary hover:bg-primary/5 dark:hover:bg-gray-800'
                     }`}
                 >
                   {item.label}
@@ -115,31 +113,25 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {/* 👇👇 أزرار التحكم (اللغة + الدارك مود) 👇👇 */}
             <div className="flex items-center gap-2 ml-4 border-l pl-4 border-gray-200 dark:border-gray-700">
               <LanguageToggle />
-
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-night-text"
               >
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             </div>
-
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
-
-            {/* Mobile Theme Toggle */}
-            <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-gray-300">
+            <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-night-text">
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </button>
-
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors focus:outline-none p-2"
+              className="text-gray-700 dark:text-night-text hover:text-primary transition-colors focus:outline-none p-2"
             >
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -155,7 +147,7 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl"
+            className="md:hidden bg-white dark:bg-night-surface border-t border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl"
           >
             <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50 dark:border-gray-800">
               {navItems.map((item) => (
@@ -164,14 +156,12 @@ const Navbar = () => {
                   to={item.path}
                   className={`block w-full text-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${isActive(item.path)
                     ? 'text-primary bg-primary/10 font-bold'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'text-gray-600 dark:text-night-text hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                 >
                   {item.label}
                 </Link>
               ))}
-
-              {/* Mobile Language Toggle */}
               <div className="pt-4 flex justify-center">
                 <LanguageToggle />
               </div>

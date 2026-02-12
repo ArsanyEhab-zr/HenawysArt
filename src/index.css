@@ -113,71 +113,56 @@
 }
 
 /* =========================================
-   تجميل وإصلاح جوجل (Google Translate Fixes)
+   تنسيق جوجل (وضع التعايش - Stacked Layout)
    ========================================= */
 
-/* 1. منع الصفحة تنزل لتحت */
-body {
-  top: 0px !important;
-  position: static !important;
-}
-
-/* 2. إخفاء البانر العلوي المزعج */
+/* 1. إظهار شريط جوجل العلوي */
 .goog-te-banner-frame.skiptranslate {
-  display: none !important;
+  display: block !important;
 }
 
-iframe.goog-te-banner-frame {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
+/* 2. السماح لجوجل إنه يزق الصفحة لتحت (رجعنا الخاصية دي) */
+body {
+  top: auto !important;
+  position: relative !important;
 }
 
-/* 3. تنظيف شكل الودجت */
+/* 3. أهم حتة: لما الصفحة تكون مترجمة، زق الناف بار لتحت 40px */
+/* بنستهدف وسم html لما ياخد كلاس translated */
+html.translated-ltr nav,
+html.translated-rtl nav {
+  top: 40px !important;
+  /* مسافة عشان شريط جوجل */
+}
+
+/* 4. تجميل القائمة المنسدلة والودجت عشان يبقى شكلهم نضيف */
 .goog-te-gadget {
   font-family: 'Cairo', sans-serif !important;
   color: transparent !important;
-  /* إخفاء نص Powered by */
-  font-size: 0 !important;
 }
 
-/* 4. إخفاء اللوجو الملون */
-.goog-te-gadget-icon,
-.goog-logo-link {
-  display: none !important;
-}
-
-/* 5. تظبيط القائمة المنسدلة (Dropdown) لتليق بالموقع */
-.goog-te-combo {
-  padding: 6px 12px !important;
-  border-radius: 8px !important;
+.goog-te-gadget .goog-te-combo {
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
   border: 1px solid #e2e8f0 !important;
   background-color: white !important;
   color: #1e293b !important;
-  font-family: 'Cairo', sans-serif !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  cursor: pointer !important;
+  font-weight: bold !important;
   outline: none !important;
+  margin: 4px 0 !important;
 }
 
 /* شكل القائمة في الدارك مود */
 .dark .goog-te-combo {
   background-color: #1e293b !important;
-  /* surface */
   color: #e2e8f0 !important;
-  /* text */
   border-color: #334155 !important;
 }
 
-/* 6. إخفاء التلميحات المزعجة */
+/* إخفاء اللوجو والتلميحات المزعجة */
+.goog-te-gadget-icon,
+.goog-logo-link,
 #goog-gt-tt,
-.goog-te-balloon-frame {
-  display: none !important;
-}
-
-/* 7. إخفاء الهايلايت الأزرق */
 .goog-text-highlight {
-  background: none !important;
-  box-shadow: none !important;
+  display: none !important;
 }
