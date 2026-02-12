@@ -4,8 +4,8 @@
 
 @layer base {
   body {
-    /* 👇 التعديل: دعم الخلفية الداكنة والنص الفاتح */
-    @apply font-body text-text bg-background transition-colors duration-300 dark:bg-gray-950 dark:text-gray-100;
+    /* 👇 التعديل هنا: استخدمنا night-bg و night-text اللي ضفناهم في الكونفيج */
+    @apply font-body text-text bg-background transition-colors duration-300 dark:bg-night-bg dark:text-night-text;
   }
 
   h1,
@@ -20,15 +20,16 @@
 
 @layer utilities {
   .watercolor-bg {
-    /* الخلفية الفاتحة (الأصلية) */
+    /* الخلفية الفاتحة (زي ما هي) */
     background: linear-gradient(135deg, rgba(109, 163, 194, 0.1) 0%, rgba(109, 163, 194, 0.05) 100%);
     position: relative;
     overflow: hidden;
   }
 
-  /* 👇 الخلفية الداكنة (Dark Mode) */
+  /* 👇 الخلفية الداكنة: استخدمنا درجات Slate عشان تليق مع night-bg */
   .dark .watercolor-bg {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+    /* ده تدرج لوني ناعم جداً من Slate-900 لـ Slate-800 */
+    background: linear-gradient(135deg, rgba(15, 23, 42, 1) 0%, rgba(30, 41, 59, 1) 100%);
   }
 
   .watercolor-bg::before {
@@ -43,9 +44,9 @@
     filter: blur(40px);
   }
 
-  /* تعديل الدائرة في الدارك مود */
+  /* تعديل الدائرة في الدارك مود: خليناها أزرق هادي عشان ينور في الضلمة */
   .dark .watercolor-bg::before {
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(94, 146, 184, 0.15) 0%, transparent 70%);
   }
 
   .watercolor-bg::after {
@@ -61,28 +62,43 @@
   }
 
   .dark .watercolor-bg::after {
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(94, 146, 184, 0.08) 0%, transparent 70%);
   }
 }
 
-/* إخفاء شريط جوجل العلوي (زي ما هو) */
+/* =========================================
+   إخفاء شريط وأدوات جوجل (Fixed & Safe)
+   ========================================= */
+
+/* إخفاء البانر العلوي تماماً */
 .goog-te-banner-frame.skiptranslate {
   display: none !important;
 }
 
+/* منع جوجل من إنه يزق الصفحة لتحت */
 body {
   top: 0px !important;
 }
 
-/* إخفاء عناصر جوجل */
+/* إخفاء لوجو جوجل اللي بيظهر جنب الكلام */
 .goog-logo-link {
   display: none !important;
 }
 
+/* إخفاء نص "Powered by Google" */
 .goog-te-gadget {
   color: transparent !important;
+  font-size: 0 !important;
 }
 
-#goog-gt-tt {
+/* إخفاء التلميحات (Tooltips) المزعجة */
+#goog-gt-tt,
+.goog-te-balloon-frame {
   display: none !important;
+}
+
+/* منع ظهور الخطوط الزرقاء على الكلام المترجم */
+font {
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
