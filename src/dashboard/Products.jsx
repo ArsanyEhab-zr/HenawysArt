@@ -3,17 +3,20 @@ import { supabase } from '../supabaseClient'
 import {
     Plus, Search, Edit, Trash2, X,
     Image as ImageIcon, Loader2, Save, Tag, DollarSign, Box, AlertCircle, Sparkles, Eye, Upload,
-    Layers, LayoutGrid, ArrowUpDown
+    Layers, LayoutGrid, ArrowUpDown, CheckSquare, MousePointer2, Settings
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
 
 const Products = () => {
-    // 👇 State للتبديل بين التابات
+    // 👇 State للتبديل بين التابات (products, categories, addons)
     const [activeTab, setActiveTab] = useState('products')
 
+    // Data States
     const [products, setProducts] = useState([])
     const [categories, setCategories] = useState([])
+    const [addons, setAddons] = useState([]) // 👈 حالة جديدة للإضافات
+
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [error, setError] = useState(null)
@@ -38,12 +41,20 @@ const Products = () => {
     })
     const [uploadingCatImage, setUploadingCatImage] = useState(false)
 
+    // ==================== Addon Modal States (جديد) ====================
+    const [isAddonModalOpen, setIsAddonModalOpen] = useState(false)
+    const [editingAddon, setEditingAddon] = useState(null)
+    const [addonFormData, setAddonFormData] = useState({
+        title: '', value: '', category_target: 'all', ui_type: 'checkbox', operation_type: 'fixed', image_url: ''
+    })
+    const [uploadingAddonImage, setUploadingAddonImage] = useState(false)
+
 
     // 1. Fetch Data
     useEffect(() => {
         fetchData()
 
-        // Realtime Subscription
+        // Realtime Subscriptions
         const prodChannel = supabase.channel('realtime-products-admin')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
                 if (payload.eventType === 'INSERT') setProducts(prev => [payload.new, ...prev])
@@ -53,19 +64,28 @@ const Products = () => {
 
         const catChannel = supabase.channel('realtime-categories-admin')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-                fetchCategories() // Reload categories on change
+                fetchCategories()
+            }).subscribe()
+
+        // 👈 اشتراك الإضافات
+        const addonsChannel = supabase.channel('realtime-addons-admin')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'product_addons' }, (payload) => {
+                if (payload.eventType === 'INSERT') setAddons(prev => [payload.new, ...prev])
+                else if (payload.eventType === 'UPDATE') setAddons(prev => prev.map(item => item.id === payload.new.id ? payload.new : item))
+                else if (payload.eventType === 'DELETE') setAddons(prev => prev.filter(item => item.id !== payload.old.id))
             }).subscribe()
 
         return () => {
             supabase.removeChannel(prodChannel)
             supabase.removeChannel(catChannel)
+            supabase.removeChannel(addonsChannel)
         }
     }, [])
 
     const fetchData = async () => {
         try {
             setLoading(true)
-            await Promise.all([fetchProducts(), fetchCategories()])
+            await Promise.all([fetchProducts(), fetchCategories(), fetchAddons()])
         } catch (err) {
             setError(err.message)
         } finally {
@@ -81,6 +101,11 @@ const Products = () => {
     const fetchCategories = async () => {
         const { data } = await supabase.from('categories').select('*').order('sort_order', { ascending: true })
         setCategories(data || [])
+    }
+
+    const fetchAddons = async () => {
+        const { data } = await supabase.from('product_addons').select('*').order('id', { ascending: true })
+        setAddons(data || [])
     }
 
     // ==================== Product Functions ====================
@@ -161,12 +186,10 @@ const Products = () => {
             }
 
             if (editingProduct) {
-                const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id)
-                if (error) throw error
+                await supabase.from('products').update(payload).eq('id', editingProduct.id)
                 toast.success('Product updated')
             } else {
-                const { error } = await supabase.from('products').insert([payload])
-                if (error) throw error
+                await supabase.from('products').insert([payload])
                 toast.success('Product created')
             }
             setIsProductModalOpen(false)
@@ -177,8 +200,7 @@ const Products = () => {
     const handleProductDelete = async (id) => {
         if (!window.confirm("Delete product?")) return
         try {
-            const { error } = await supabase.from('products').delete().eq('id', id)
-            if (error) throw error
+            await supabase.from('products').delete().eq('id', id)
             toast.success('Product deleted')
         } catch (error) { toast.error('Delete failed') }
     }
@@ -208,8 +230,7 @@ const Products = () => {
         try {
             const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1000, useWebWorker: true, fileType: 'image/webp' })
             const fileName = `cat-${Date.now()}.webp`
-            const { error } = await supabase.storage.from('product-images').upload(fileName, compressed)
-            if (error) throw error
+            await supabase.storage.from('product-images').upload(fileName, compressed)
             const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
             setCatFormData(prev => ({ ...prev, image_url: data.publicUrl }))
             toast.success('Image uploaded')
@@ -243,8 +264,72 @@ const Products = () => {
         toast.success('Category deleted')
     }
 
+    // ==================== Addon Functions (جديد) ====================
+
+    const openAddonModal = (addon = null) => {
+        if (addon) {
+            setEditingAddon(addon)
+            setAddonFormData({
+                title: addon.title, value: addon.value, category_target: addon.category_target,
+                ui_type: addon.ui_type, operation_type: addon.operation_type, image_url: addon.image_url
+            })
+        } else {
+            setEditingAddon(null)
+            setAddonFormData({
+                title: '', value: '', category_target: 'all', ui_type: 'checkbox', operation_type: 'fixed', image_url: ''
+            })
+        }
+        setIsAddonModalOpen(true)
+    }
+
+    const handleAddonImageUpload = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setUploadingAddonImage(true)
+        try {
+            const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1000, useWebWorker: true, fileType: 'image/webp' })
+            const fileName = `addons/${Date.now()}.webp`
+            await supabase.storage.from('product-images').upload(fileName, compressed)
+            const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+            setAddonFormData(prev => ({ ...prev, image_url: data.publicUrl }))
+            toast.success('Image uploaded')
+        } catch (err) { toast.error('Upload failed') }
+        finally { setUploadingAddonImage(false) }
+    }
+
+    const handleAddonSubmit = async (e) => {
+        e.preventDefault()
+        if (!addonFormData.title || !addonFormData.value) return toast.error("Title and Value required")
+        setIsSubmitting(true)
+        try {
+            const payload = { ...addonFormData, value: Number(addonFormData.value) }
+            if (editingAddon) {
+                await supabase.from('product_addons').update(payload).eq('id', editingAddon.id)
+                toast.success('Addon updated')
+            } else {
+                await supabase.from('product_addons').insert([payload])
+                toast.success('Addon created')
+            }
+            setIsAddonModalOpen(false)
+        } catch (err) { toast.error('Error saving addon') }
+        finally { setIsSubmitting(false) }
+    }
+
+    const handleAddonDelete = async (id) => {
+        if (!window.confirm("Delete addon?")) return
+        await supabase.from('product_addons').delete().eq('id', id)
+        toast.success('Addon deleted')
+    }
+
 
     // ==================== Render ====================
+
+    // زرار الـ Add اللي فوق هيتغير بناءً على التاب
+    const handleAddClick = () => {
+        if (activeTab === 'products') openProductModal()
+        else if (activeTab === 'categories') openCategoryModal()
+        else openAddonModal()
+    }
 
     if (error) return (
         <div className="p-12 text-center flex flex-col items-center gap-4">
@@ -260,30 +345,28 @@ const Products = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Store Management</h1>
-                    <p className="text-gray-500 text-sm">Manage products and categories</p>
+                    <p className="text-gray-500 text-sm">Manage products, categories & add-ons</p>
                 </div>
 
                 {/* 👇👇 Tabs Switcher 👇👇 */}
-                <div className="flex bg-gray-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setActiveTab('products')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'products' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Products
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('categories')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'categories' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Categories
-                    </button>
+                <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
+                    {['products', 'categories', 'addons'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all capitalize ${activeTab === tab ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            {tab === 'addons' ? 'Add-ons' : tab}
+                        </button>
+                    ))}
                 </div>
 
                 <button
-                    onClick={() => activeTab === 'products' ? openProductModal() : openCategoryModal()}
+                    onClick={handleAddClick}
                     className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all"
                 >
-                    <Plus size={20} /> {activeTab === 'products' ? 'Add Product' : 'Add Category'}
+                    <Plus size={20} />
+                    {activeTab === 'products' ? 'Add Product' : activeTab === 'categories' ? 'Add Category' : 'Add Add-on'}
                 </button>
             </div>
 
@@ -296,7 +379,7 @@ const Products = () => {
                         <div className="space-y-6">
                             <div className="relative max-w-md">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input type="text" placeholder="Search by name, category..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                                <input type="text" placeholder="Search by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20" />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -360,6 +443,45 @@ const Products = () => {
                             ))}
                         </div>
                     )}
+
+                    {/* ================= Addons View (جديد) ================= */}
+                    {activeTab === 'addons' && (
+                        <div className="space-y-6">
+                            <div className="relative max-w-md">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input type="text" placeholder="Search addons..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {addons.filter(a => (a.title || '').toLowerCase().includes(search.toLowerCase())).map(addon => (
+                                    <div key={addon.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all group relative">
+                                        <div className="h-40 bg-gray-50 relative">
+                                            <img src={addon.image_url || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://via.placeholder.com/150?text=No+Image'} />
+                                            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-700 shadow-sm uppercase">
+                                                {addon.category_target === 'all' ? 'All' : addon.category_target}
+                                            </div>
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <button onClick={() => openAddonModal(addon)} className="bg-white p-2 rounded-full text-blue-600 hover:scale-110 transition-all"><Edit size={18} /></button>
+                                                <button onClick={() => handleAddonDelete(addon.id)} className="bg-white p-2 rounded-full text-red-600 hover:scale-110 transition-all"><Trash2 size={18} /></button>
+                                            </div>
+                                        </div>
+                                        <div className="p-4">
+                                            <h3 className="font-bold text-gray-800">{addon.title}</h3>
+                                            <div className="flex items-center justify-between mt-2">
+                                                <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                    {addon.ui_type === 'checkbox' ? <CheckSquare size={14} /> : <MousePointer2 size={14} />}
+                                                    <span className="capitalize">{addon.ui_type}</span>
+                                                </div>
+                                                <span className="font-bold text-primary">
+                                                    {addon.operation_type.includes('percent') ? `${addon.value}%` : `${addon.value} EGP`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -372,6 +494,7 @@ const Products = () => {
                             <button onClick={() => setIsProductModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleProductSubmit} className="p-6 space-y-6">
+                            {/* ... (نفس كود رفع صور المنتجات) ... */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-bold text-gray-700">Images</label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -448,6 +571,68 @@ const Products = () => {
                             </div>
                             <div><label className="text-xs font-bold text-gray-500">DESC</label><textarea className="w-full border rounded p-2 mt-1 h-20 resize-none" value={catFormData.description} onChange={e => setCatFormData({ ...catFormData, description: e.target.value })} /></div>
                             <button className="w-full bg-primary text-white py-3 rounded font-bold" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Save Category'}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= Addon Modal (جديد) ================= */}
+            {isAddonModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="font-bold text-xl">{editingAddon ? 'Edit Add-on' : 'New Add-on'}</h2>
+                            <button onClick={() => setIsAddonModalOpen(false)}><X className="text-gray-400" /></button>
+                        </div>
+                        <form onSubmit={handleAddonSubmit} className="space-y-4">
+                            <div className="flex justify-center">
+                                <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 relative overflow-hidden group hover:border-primary cursor-pointer">
+                                    {addonFormData.image_url ? <img src={addonFormData.image_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center w-full h-full text-gray-400"><ImageIcon /></div>}
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {uploadingAddonImage ? <Loader2 className="animate-spin text-white" /> : <Upload className="text-white" />}
+                                    </div>
+                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleAddonImageUpload} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500">TITLE</label>
+                                    <input className="w-full border rounded p-2 mt-1" value={addonFormData.title} onChange={e => setAddonFormData({ ...addonFormData, title: e.target.value })} required placeholder="e.g. Gift Box" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500">VALUE</label>
+                                    <input type="number" className="w-full border rounded p-2 mt-1" value={addonFormData.value} onChange={e => setAddonFormData({ ...addonFormData, value: e.target.value })} required placeholder="e.g. 50" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500">TARGET CATEGORY</label>
+                                <select className="w-full border rounded p-2 mt-1 bg-white" value={addonFormData.category_target} onChange={e => setAddonFormData({ ...addonFormData, category_target: e.target.value })}>
+                                    <option value="all">All Products</option>
+                                    {categories.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500">UI TYPE</label>
+                                    <select className="w-full border rounded p-2 mt-1 bg-white" value={addonFormData.ui_type} onChange={e => setAddonFormData({ ...addonFormData, ui_type: e.target.value })}>
+                                        <option value="checkbox">Checkbox (Multi)</option>
+                                        <option value="radio">Radio (Single)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500">OPERATION</label>
+                                    <select className="w-full border rounded p-2 mt-1 bg-white" value={addonFormData.operation_type} onChange={e => setAddonFormData({ ...addonFormData, operation_type: e.target.value })}>
+                                        <option value="fixed">Fixed Price (+EGP)</option>
+                                        <option value="percent_add">Percent Add (+%)</option>
+                                        <option value="percent_double_discount">Percent Discount (-%)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button className="w-full bg-primary text-white py-3 rounded font-bold" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Save Add-on'}</button>
                         </form>
                     </div>
                 </div>

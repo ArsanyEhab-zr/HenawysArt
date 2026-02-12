@@ -153,13 +153,6 @@ const DashboardLayout = () => {
             label: 'Products',
             roles: ['admin', 'employee']
         },
-        // 👇👇 العنصر الجديد: Add-ons 👇👇
-        {
-            path: '/dashboard/addons',
-            icon: Layers,
-            label: 'Add-ons',
-            roles: ['admin'] // الأدمن بس اللي يعدل الإضافات
-        },
         {
             path: '/dashboard/users',
             icon: Users,
