@@ -61,12 +61,12 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
+      // 👇👇 التعديل الهام هنا: استخدام ألوان صريحة للدارك مود (Slate-800) 👇👇
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled || isOpen
-        ? 'bg-white/95 dark:bg-night-surface/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-gray-800'
-        : 'bg-white/90 dark:bg-night-surface/90 backdrop-blur-md shadow-sm'
+        ? 'bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-[#334155]'
+        : 'bg-white/90 dark:bg-[#1e293b]/90 backdrop-blur-md shadow-sm dark:border-b dark:border-[#334155]/50'
         }`}
     >
-      {/* 👇👇 التعديل هنا: شيلنا max-w-7xl وخليناها w-full عشان تاخد العرض كله 👇👇 */}
       <div className="w-full px-6 md:px-12">
         <div className="flex items-center justify-between h-20">
 
@@ -96,9 +96,10 @@ const Navbar = () => {
               <Link key={item.path} to={item.path}>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
+                  // 👇👇 تعديل ألوان الروابط في الدارك مود 👇👇
                   className={`relative px-4 py-2 rounded-lg transition-colors duration-200 font-medium ${isActive(item.path)
                     ? 'text-primary bg-primary/10'
-                    : 'text-text dark:text-night-text hover:text-primary hover:bg-primary/5 dark:hover:bg-gray-800'
+                    : 'text-gray-700 dark:text-[#e2e8f0] hover:text-primary hover:bg-primary/5 dark:hover:bg-[#0f172a]'
                     }`}
                 >
                   {item.label}
@@ -117,7 +118,7 @@ const Navbar = () => {
               <LanguageToggle />
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-night-text"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#0f172a] transition-colors text-gray-600 dark:text-[#e2e8f0]"
               >
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
@@ -126,12 +127,12 @@ const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
-            <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-night-text">
+            <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-[#e2e8f0]">
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </button>
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-700 dark:text-night-text hover:text-primary transition-colors focus:outline-none p-2"
+              className="text-gray-700 dark:text-[#e2e8f0] hover:text-primary transition-colors focus:outline-none p-2"
             >
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -147,16 +148,17 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white dark:bg-night-surface border-t border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl"
+            // 👇👇 القائمة المنسدلة للموبايل بقت غامقة صريح 👇👇
+            className="md:hidden bg-white dark:bg-[#1e293b] border-t border-gray-100 dark:border-gray-700 overflow-hidden shadow-xl"
           >
-            <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50 dark:border-gray-800">
+            <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50 dark:border-gray-700">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`block w-full text-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${isActive(item.path)
                     ? 'text-primary bg-primary/10 font-bold'
-                    : 'text-gray-600 dark:text-night-text hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'text-gray-600 dark:text-[#e2e8f0] hover:bg-gray-50 dark:hover:bg-[#0f172a]'
                     }`}
                 >
                   {item.label}

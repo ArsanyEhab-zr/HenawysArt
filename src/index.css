@@ -28,6 +28,11 @@
     @apply font-body bg-[var(--night-bg)] text-[var(--night-text)] transition-colors duration-300;
   }
 
+  /* 👇 إضافة هامة: إجبار الجسم إنه ياخد لون غامق صريح في الدارك مود */
+  .dark body {
+    background-color: var(--night-bg) !important;
+  }
+
   h1,
   h2,
   h3,
@@ -41,8 +46,8 @@
 @layer utilities {
 
   /* =========================================
-     خلفية الـ Watercolor (بتتغير مع الدارك مود)
-     ========================================= */
+      خلفية الـ Watercolor (بتتغير مع الدارك مود)
+      ========================================= */
   .watercolor-bg {
     background: linear-gradient(135deg, rgba(109, 163, 194, 0.1) 0%, rgba(109, 163, 194, 0.05) 100%);
     position: relative;
@@ -50,7 +55,8 @@
   }
 
   .dark .watercolor-bg {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 1) 0%, rgba(30, 41, 59, 1) 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    /* لون ثابت وقوي */
   }
 
   .watercolor-bg::before {
@@ -86,22 +92,28 @@
   }
 
   /* =========================================
-     تعميم الدارك مود على العناصر البيضاء القديمة
-     ========================================= */
-  .dark .bg-white {
+      الحل النووي للبهاق: تعميم الدارك مود
+      ========================================= */
+
+  /* هنا ضفنا selectors أكتر عشان نمسك أي لون فاتح ونقلبه غامق */
+  .dark .bg-white,
+  .dark .bg-gray-50,
+  .dark .bg-slate-50,
+  .dark .bg-zinc-50 {
     background-color: var(--night-surface) !important;
     border-color: #334155 !important;
     color: var(--night-text) !important;
   }
 
-  .dark .bg-gray-50,
   .dark .bg-gray-100,
-  .dark .bg-gray-200 {
+  .dark .bg-gray-200,
+  .dark .bg-slate-100 {
     background-color: var(--night-bg) !important;
     border-color: #1e293b !important;
     color: var(--night-text) !important;
   }
 
+  /* قلب النصوص الغامقة لفاتحة */
   .dark .text-gray-500,
   .dark .text-gray-600,
   .dark .text-gray-700,
@@ -110,11 +122,18 @@
   .dark .text-text {
     color: var(--night-muted) !important;
   }
+
+  /* حدود العناصر */
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-white {
+    border-color: #334155 !important;
+  }
 }
 
 /* =========================================
-   تنسيق جوجل (وضع التعايش - Stacked Layout)
-   ========================================= */
+    تنسيق جوجل (وضع التعايش - Stacked Layout)
+    ========================================= */
 
 /* 1. إظهار شريط جوجل العلوي */
 .goog-te-banner-frame.skiptranslate {
@@ -128,11 +147,17 @@ body {
 }
 
 /* 3. أهم حتة: لما الصفحة تكون مترجمة، زق الناف بار لتحت 40px */
-/* بنستهدف وسم html لما ياخد كلاس translated */
+/* بنستهدف وسم html لما ياخد كلاس translated (سواء يمين أو شمال) */
 html.translated-ltr nav,
 html.translated-rtl nav {
   top: 40px !important;
   /* مسافة عشان شريط جوجل */
+}
+
+/* في حالة الدارك مود وجوجل شغال، نتأكد ان الناف بار مش هيبيض */
+html.translated-ltr .dark nav,
+html.translated-rtl .dark nav {
+  background-color: var(--night-surface) !important;
 }
 
 /* 4. تجميل القائمة المنسدلة والودجت عشان يبقى شكلهم نضيف */
