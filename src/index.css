@@ -4,21 +4,33 @@
 
 @layer base {
   body {
-    @apply font-body text-text bg-background;
+    /* 👇 التعديل: دعم الخلفية الداكنة والنص الفاتح */
+    @apply font-body text-text bg-background transition-colors duration-300 dark:bg-gray-950 dark:text-gray-100;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-script;
   }
 }
 
 @layer utilities {
   .watercolor-bg {
+    /* الخلفية الفاتحة (الأصلية) */
     background: linear-gradient(135deg, rgba(109, 163, 194, 0.1) 0%, rgba(109, 163, 194, 0.05) 100%);
     position: relative;
     overflow: hidden;
   }
-  
+
+  /* 👇 الخلفية الداكنة (Dark Mode) */
+  .dark .watercolor-bg {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+  }
+
   .watercolor-bg::before {
     content: '';
     position: absolute;
@@ -30,7 +42,12 @@
     border-radius: 50%;
     filter: blur(40px);
   }
-  
+
+  /* تعديل الدائرة في الدارك مود */
+  .dark .watercolor-bg::before {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
+  }
+
   .watercolor-bg::after {
     content: '';
     position: absolute;
@@ -42,4 +59,30 @@
     border-radius: 50%;
     filter: blur(30px);
   }
+
+  .dark .watercolor-bg::after {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+  }
+}
+
+/* إخفاء شريط جوجل العلوي (زي ما هو) */
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+}
+
+/* إخفاء عناصر جوجل */
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  color: transparent !important;
+}
+
+#goog-gt-tt {
+  display: none !important;
 }

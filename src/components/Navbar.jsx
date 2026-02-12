@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Moon, Sun } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import LanguageToggle from './LanguageToggle' // استدعاء زرار اللغة
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false) // حالة الدارك مود
   const location = useLocation()
 
   useEffect(() => {
@@ -13,6 +15,16 @@ const Navbar = () => {
       setIsScrolled(window.scrollY > 20)
     }
     window.addEventListener('scroll', handleScroll)
+
+    // Check local storage for theme preference
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDarkMode(true)
+      document.documentElement.classList.add('dark')
+    } else {
+      setIsDarkMode(false)
+      document.documentElement.classList.remove('dark')
+    }
+
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -20,6 +32,19 @@ const Navbar = () => {
     setIsOpen(false)
     window.scrollTo(0, 0)
   }, [location])
+
+  // دالة تغيير الثيم
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark')
+      localStorage.theme = 'light'
+      setIsDarkMode(false)
+    } else {
+      document.documentElement.classList.add('dark')
+      localStorage.theme = 'dark'
+      setIsDarkMode(true)
+    }
+  }
 
   const navItems = [
     { path: '/', label: 'Home' },
@@ -38,9 +63,10 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
+      // 👇 تحديث الكلاسات لدعم الدارك مود
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled || isOpen
-          ? 'bg-white/95 backdrop-blur-lg shadow-lg border-b border-white/20'
-          : 'bg-white/90 backdrop-blur-md shadow-sm'
+        ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-gray-800'
+        : 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm'
         }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,16 +78,14 @@ const Navbar = () => {
               whileHover={{ scale: 1.02 }}
               className="flex items-center gap-3 flex-shrink-0"
             >
-              {/* 🖼️ الدائرة الخاصة باللوجو */}
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-gray-50 flex items-center justify-center">
                 <img
-                  src="/logo.png"  // 👈 ده المسار اللي الـ Browser بيفهمه (بيقرأ من جوه الـ public)
+                  src="/logo.png"
                   alt="Henawy's Art Logo"
                   className="w-full h-full object-cover"
                 />
               </div>
 
-              {/* الاسم بجانب اللوجو */}
               <h1 className="text-2xl md:text-3xl font-script text-primary font-bold">
                 Henawy's Art
               </h1>
@@ -75,8 +99,8 @@ const Navbar = () => {
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   className={`relative px-4 py-2 rounded-lg transition-colors duration-200 font-medium ${isActive(item.path)
-                      ? 'text-primary bg-primary/10'
-                      : 'text-text hover:text-primary hover:bg-primary/5'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-text dark:text-gray-200 hover:text-primary hover:bg-primary/5 dark:hover:bg-gray-800'
                     }`}
                 >
                   {item.label}
@@ -90,13 +114,32 @@ const Navbar = () => {
                 </motion.div>
               </Link>
             ))}
+
+            {/* 👇👇 أزرار التحكم (اللغة + الدارك مود) 👇👇 */}
+            <div className="flex items-center gap-2 ml-4 border-l pl-4 border-gray-200 dark:border-gray-700">
+              <LanguageToggle />
+
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300"
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            </div>
+
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-2">
+
+            {/* Mobile Theme Toggle */}
+            <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-gray-300">
+              {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+            </button>
+
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-700 hover:text-primary transition-colors focus:outline-none p-2"
+              className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors focus:outline-none p-2"
             >
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -112,21 +155,26 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl"
+            className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl"
           >
-            <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50">
+            <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50 dark:border-gray-800">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`block w-full text-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${isActive(item.path)
-                      ? 'text-primary bg-primary/10 font-bold'
-                      : 'text-gray-600 hover:bg-gray-50'
+                    ? 'text-primary bg-primary/10 font-bold'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                 >
                   {item.label}
                 </Link>
               ))}
+
+              {/* Mobile Language Toggle */}
+              <div className="pt-4 flex justify-center">
+                <LanguageToggle />
+              </div>
             </div>
           </motion.div>
         )}
