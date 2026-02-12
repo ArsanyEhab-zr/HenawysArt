@@ -18,35 +18,33 @@ const Contact = () => {
     })
   }
 
- const handleSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // 👇 حط الرابط الجديد اللي لسه ناسخه حالا هنا
     const scriptUrl = "https://script.google.com/macros/s/AKfycbwlXLx7LcNjp2F850skBK55Fn52hu3EJHNd-8q3-woeR6M9GVIK16-lff8Ba_EFC3Oy/exec"
-    
-    // تجهيز البيانات (لاحظ الحروف الكابيتال عشان تطابق الشيت)
-    const formDatab = new FormData()
-    formDatab.append('Date', new Date().toLocaleString()) // ضفنا التاريخ
-    formDatab.append('Name', formData.name)       // ✅ Name كابيتال
-    formDatab.append('Email', formData.email)     // ✅ Email كابيتال
-    formDatab.append('Message', formData.message) // ✅ Message كابيتال
 
-    fetch(scriptUrl, { 
-        method: 'POST', 
-        body: formDatab,
-        mode: 'no-cors'
+    const formDatab = new FormData()
+    formDatab.append('Date', new Date().toLocaleString())
+    formDatab.append('Name', formData.name)
+    formDatab.append('Email', formData.email)
+    formDatab.append('Message', formData.message)
+
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: formDatab,
+      mode: 'no-cors'
     })
-    .then(() => {
+      .then(() => {
         alert('تم الإرسال بنجاح! شكراً لرأيك ❤️')
-        setFormData({ name: '', email: '', message: '' }) 
-        setIsSubmitting(false) 
-    })
-    .catch(error => {
+        setFormData({ name: '', email: '', message: '' })
+        setIsSubmitting(false)
+      })
+      .catch(error => {
         console.error('Error!', error.message)
         alert('تأكد من الرابط الجديد وصلاحيات الـ Anyone')
         setIsSubmitting(false)
-    })
+      })
   }
 
   const contactInfo = [
@@ -77,11 +75,12 @@ const Contact = () => {
   ]
 
   return (
-    <div className="min-h-screen">
+    // 👇 خلفية الصفحة كحلي في الدارك
+    <div className="min-h-screen bg-white dark:bg-[#0f172a] transition-colors duration-300">
       <Navbar />
 
       {/* Hero Section */}
-      <section className="pt-24 pb-20 bg-background">
+      <section className="pt-24 pb-20 bg-background dark:bg-[#0f172a]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -89,10 +88,10 @@ const Contact = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-5xl md:text-6xl font-script text-text mb-6">
+            <h1 className="text-5xl md:text-6xl font-script text-text dark:text-[#e2e8f0] mb-6">
               Get in Touch
             </h1>
-            <p className="text-xl text-text-light max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-text-light dark:text-[#94a3b8] max-w-3xl mx-auto leading-relaxed">
               We value your feedback! Help us improve Henawy's Art.
             </p>
           </motion.div>
@@ -100,10 +99,10 @@ const Contact = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50 dark:bg-[#0f172a]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            
+
             {/* Contact Information */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -113,10 +112,10 @@ const Contact = () => {
               className="space-y-8"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl font-script text-text mb-6">
+                <h2 className="text-3xl md:text-4xl font-script text-text dark:text-[#e2e8f0] mb-6">
                   Let's Create Together
                 </h2>
-                <p className="text-text-light leading-relaxed mb-8">
+                <p className="text-text-light dark:text-[#94a3b8] leading-relaxed mb-8">
                   Whether you have a specific vision, a question, or a suggestion to improve our website,
                   we're here to listen.
                 </p>
@@ -130,13 +129,14 @@ const Contact = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-white shadow-md hover:shadow-lg transition-shadow duration-300"
+                    // 👇 الكروت في الدارك مود بقيت كحلي (#1e293b)
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-[#1e293b] shadow-md hover:shadow-lg transition-shadow duration-300"
                   >
                     <div className="flex-shrink-0 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                       <info.icon className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-text">{info.title}</h3>
+                      <h3 className="font-semibold text-text dark:text-[#e2e8f0]">{info.title}</h3>
                       {info.action ? (
                         <a
                           href={info.action}
@@ -145,7 +145,7 @@ const Contact = () => {
                           {info.value}
                         </a>
                       ) : (
-                        <span className="text-text-light">{info.value}</span>
+                        <span className="text-text-light dark:text-[#94a3b8]">{info.value}</span>
                       )}
                     </div>
                   </motion.div>
@@ -159,21 +159,22 @@ const Contact = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-lg p-8 border border-primary/10"
+              // 👇 الفورم نفسها بقيت كحلي في الدارك
+              className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-lg p-8 border border-primary/10 dark:border-[#334155]"
             >
               <div className="flex items-center gap-3 mb-6">
-                 <Lightbulb className="text-accent w-8 h-8" />
-                 <h3 className="text-2xl font-script text-text">
-                   Help Us Improve
-                 </h3>
+                <Lightbulb className="text-accent w-8 h-8" />
+                <h3 className="text-2xl font-script text-text dark:text-[#e2e8f0]">
+                  Help Us Improve
+                </h3>
               </div>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-gray-500 dark:text-[#94a3b8] mb-6">
                 Have a suggestion for the website? Found a bug? Or just want to say hi? Write to us below!
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-text mb-2">
+                  <label htmlFor="name" className="block text-sm font-medium text-text dark:text-[#e2e8f0] mb-2">
                     Your Name
                   </label>
                   <input
@@ -183,13 +184,14 @@ const Contact = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                    // 👇 المدخلات لونها أغمق سنة من الفورم في الدارك
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-[#334155] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors bg-white dark:bg-[#0f172a] dark:text-white"
                     placeholder="Enter your name"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-text mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-text dark:text-[#e2e8f0] mb-2">
                     Email Address
                   </label>
                   <input
@@ -199,13 +201,13 @@ const Contact = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-[#334155] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors bg-white dark:bg-[#0f172a] dark:text-white"
                     placeholder="your@email.com"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-text mb-2">
+                  <label htmlFor="message" className="block text-sm font-medium text-text dark:text-[#e2e8f0] mb-2">
                     Your Feedback / Message
                   </label>
                   <textarea
@@ -215,7 +217,7 @@ const Contact = () => {
                     onChange={handleInputChange}
                     required
                     rows={6}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-none"
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-[#334155] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-none bg-white dark:bg-[#0f172a] dark:text-white"
                     placeholder="Tell us what you think or how we can improve..."
                   />
                 </div>
