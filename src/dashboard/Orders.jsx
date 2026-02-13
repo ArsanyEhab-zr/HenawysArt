@@ -13,6 +13,9 @@ const Orders = () => {
     const [selectedCategory, setSelectedCategory] = useState('All')
     const [selectedOrder, setSelectedOrder] = useState(null)
 
+    // 👇 1. ضفنا state جديدة عشان نخزن فيها خريطة المنتجات (ID -> Category)
+    const [productsMap, setProductsMap] = useState({})
+
     const STATUS_OPTIONS = [
         { value: 'pending', label: 'Pending (قيد الانتظار)', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
         { value: 'confirmed', label: 'Confirmed (مؤكد)', color: 'bg-blue-100 text-blue-800 border-blue-200' },
@@ -32,10 +35,21 @@ const Orders = () => {
 
     const fetchCategories = async () => {
         try {
-            const { data, error } = await supabase.from('products').select('category')
+            // 👇 2. عدلنا هنا عشان نجيب الـ id والـ category لكل المنتجات
+            const { data, error } = await supabase.from('products').select('id, category')
             if (error) throw error
+
+            // تجميع الفئات الفريدة للقائمة
             const uniqueCategories = ['All', ...new Set(data.map(item => item.category).filter(Boolean))]
             setCategories(uniqueCategories)
+
+            // 👇 3. بناء الخريطة: كل منتج ورقمه والفئة بتاعته
+            const map = {}
+            data.forEach(product => {
+                map[product.id] = product.category
+            })
+            setProductsMap(map)
+
         } catch (error) {
             console.error("Error fetching categories:", error)
         }
@@ -100,7 +114,6 @@ const Orders = () => {
         };
     }
 
-    // 👇👇👇 منطق الفلتر المحسن 👇👇👇
     const filteredOrders = orders.filter(o => {
         const matchesSearch =
             (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -109,10 +122,13 @@ const Orders = () => {
 
         let matchesCategory = true;
         if (selectedCategory !== 'All') {
-            // بنتأكد إن items موجودة وفيها category قبل ما نقارن
-            const orderCategory = o.items && o.items.category ? o.items.category.toLowerCase().trim() : '';
+            // 👇 4. التعديل المهم هنا: بنجيب الفئة باستخدام رقم المنتج (productId) من الخريطة اللي عملناها
+            // لأن items اللي في الأوردر مفهاش category بشكل مباشر، بس فيها productId
+            const productId = o.items?.productId;
+            const orderCategory = (productsMap[productId] || '').toLowerCase().trim();
             const filterCategory = selectedCategory.toLowerCase().trim();
-            matchesCategory = orderCategory === filterCategory; // أو use .includes() لو عايز مرونة أكتر
+
+            matchesCategory = orderCategory === filterCategory;
         }
         return matchesSearch && matchesCategory;
     })
@@ -132,7 +148,7 @@ const Orders = () => {
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
 
-                    {/* 👇👇 زرار Clear Filters نقلته هنا 👇👇 */}
+                    {/* زرار Clear Filters موجود هنا */}
                     {(search || selectedCategory !== 'All') && (
                         <button
                             onClick={() => { setSearch(''); setSelectedCategory('All') }}
@@ -191,6 +207,8 @@ const Orders = () => {
                                 {filteredOrders.map((order) => {
                                     const statusInfo = getStatusInfo(order.status);
                                     const items = order.items || {};
+                                    // 👇 نجيب الفئة هنا كمان عشان نعرضها صح في الجدول
+                                    const categoryName = productsMap[items.productId] || 'N/A';
 
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -219,8 +237,9 @@ const Orders = () => {
                                                     <div>
                                                         <div className="font-bold text-gray-800 line-clamp-1">{items.productName || 'Unknown Item'}</div>
                                                         <div className="flex items-center gap-2 mt-1">
+                                                            {/* عرضنا الفئة الصح هنا */}
                                                             <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">
-                                                                {items.category || 'N/A'}
+                                                                {categoryName}
                                                             </span>
                                                             <span className="text-xs font-bold text-primary flex items-center">
                                                                 <DollarSign size={10} /> {order.total_price}
@@ -312,6 +331,7 @@ const Orders = () => {
 
                             {(() => {
                                 const items = selectedOrder.items || {};
+                                const categoryName = productsMap[items.productId] || 'N/A'; // الفئة هنا كمان
                                 return (
                                     <div>
                                         <h4 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">Product Details</h4>
@@ -325,7 +345,7 @@ const Orders = () => {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <p className="font-bold text-gray-800 text-lg">{items.productName || 'Unknown Item'}</p>
-                                                        <span className="text-xs bg-white border px-2 py-0.5 rounded text-gray-500 mt-1 inline-block">{items.category || 'N/A'}</span>
+                                                        <span className="text-xs bg-white border px-2 py-0.5 rounded text-gray-500 mt-1 inline-block">{categoryName}</span>
                                                     </div>
                                                     <p className="font-bold text-primary text-lg">{selectedOrder.total_price} EGP</p>
                                                 </div>
