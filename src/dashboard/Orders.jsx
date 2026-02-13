@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
-    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock
+    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock, RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -100,6 +100,7 @@ const Orders = () => {
         };
     }
 
+    // 👇👇👇 منطق الفلتر المحسن 👇👇👇
     const filteredOrders = orders.filter(o => {
         const matchesSearch =
             (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -108,9 +109,10 @@ const Orders = () => {
 
         let matchesCategory = true;
         if (selectedCategory !== 'All') {
-            const orderCategory = (o.items?.category || '').toLowerCase().trim();
+            // بنتأكد إن items موجودة وفيها category قبل ما نقارن
+            const orderCategory = o.items && o.items.category ? o.items.category.toLowerCase().trim() : '';
             const filterCategory = selectedCategory.toLowerCase().trim();
-            matchesCategory = orderCategory.includes(filterCategory);
+            matchesCategory = orderCategory === filterCategory; // أو use .includes() لو عايز مرونة أكتر
         }
         return matchesSearch && matchesCategory;
     })
@@ -127,8 +129,21 @@ const Orders = () => {
                         {selectedCategory !== 'All' && <span className="font-bold text-primary ml-1">({selectedCategory})</span>}
                     </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <div className="relative group">
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+
+                    {/* 👇👇 زرار Clear Filters نقلته هنا 👇👇 */}
+                    {(search || selectedCategory !== 'All') && (
+                        <button
+                            onClick={() => { setSearch(''); setSelectedCategory('All') }}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 hover:bg-red-50 rounded-lg border border-gray-200"
+                            title="Clear Filters"
+                        >
+                            <RefreshCw size={18} />
+                        </button>
+                    )}
+
+                    <div className="relative group w-full sm:w-auto">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-primary transition-colors" size={16} />
                         <select
                             value={selectedCategory}
@@ -139,11 +154,12 @@ const Orders = () => {
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
                     </div>
+
                     <div className="relative w-full sm:w-64 group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
                         <input
                             type="text"
-                            placeholder="Search name, phone..."
+                            placeholder="Search name, phone, ID..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg w-full bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all text-sm"
@@ -163,7 +179,6 @@ const Orders = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs border-b border-gray-100 tracking-wider">
                                 <tr>
-                                    {/* 👇 غيرت العنوان هنا عشان يبقى واضح إنه ID */}
                                     <th className="p-4 w-16 text-center">ID</th>
                                     <th className="p-4">Customer Details</th>
                                     <th className="p-4">Product Info</th>
@@ -180,7 +195,6 @@ const Orders = () => {
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
                                             <td className="p-4 text-center">
-                                                {/* 👇 التعديل هنا: عرض الـ ID الحقيقي بدل الترتيب */}
                                                 <span className="bg-gray-100 text-gray-600 font-mono font-bold text-[11px] px-2 py-1 rounded-md border border-gray-200">
                                                     #{order.id}
                                                 </span>
