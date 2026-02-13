@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Loader2, Sparkles, Star, Zap } from 'lucide-react' // ضفت Zap عشان الشغل الجديد
+import { ArrowRight, Loader2, Sparkles, Star, Zap, Truck, Palette, ShieldCheck, Gift } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import ProductCard from '../components/ProductCard'
@@ -7,7 +7,6 @@ import OrderModal from '../components/OrderModal'
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { Truck, Palette, ShieldCheck, Gift } from 'lucide-react'
 
 const Home = () => {
   const [topProducts, setTopProducts] = useState([])
@@ -33,7 +32,6 @@ const Home = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true)
-
       // 1. جلب الأكثر مبيعاً
       const { data: top } = await supabase
         .from('products')
@@ -62,7 +60,7 @@ const Home = () => {
     setIsModalOpen(true)
   }
 
-  // 👇 ده مصفوفة المميزات عشان الكود يبقى نضيف
+  // مصفوفة المميزات
   const features = [
     {
       icon: <Palette size={28} />,
@@ -87,15 +85,14 @@ const Home = () => {
   ]
 
   return (
-    // 👇 الخلفية الأساسية للموقع كله عشان نضمن التناسق
     <div className="min-h-screen bg-white dark:bg-[#0f172a] transition-colors duration-300 overflow-x-hidden">
       <Navbar />
       <Hero />
 
-      {/* ✨ Features Strip Section ✨ */}
-      <section className="py-10 bg-white dark:bg-[#0f172a] relative z-20 -mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      {/* ✨ Features Strip Section (تعديل: رفعناه لفوق بتأثير زجاجي) ✨ */}
+      <section className="relative z-20 -mt-16 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/80 dark:bg-[#1e293b]/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -104,17 +101,14 @@ const Home = () => {
                 transition={{ delay: index * 0.1 }}
                 className="flex items-center gap-4 group cursor-default"
               >
-                {/* Icon Box */}
-                <div className="w-14 h-14 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+                <div className="w-14 h-14 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm shrink-0">
                   {feature.icon}
                 </div>
-
-                {/* Text */}
                 <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-primary transition-colors notranslate">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-tight">
                     {feature.desc}
                   </p>
                 </div>
@@ -125,7 +119,7 @@ const Home = () => {
       </section>
 
       {/* 🔥 Section: Top Sellers 🔥 */}
-      <section className="py-20 relative">
+      <section className="py-20 md:py-28 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -153,18 +147,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ✨ Section: New Arrivals (الجزء اللي هيشد الناس) ✨ */}
-      {/* 👇 التعديل الجامد هنا: فصلنا السكشن وعملنا خلفية بتنور */}
+      {/* ✨ Section: New Arrivals (التصميم المضيء) ✨ */}
       <section className="py-24 relative overflow-hidden">
-
-        {/* الخلفية السحرية (Glow Background) */}
         <div className="absolute inset-0 bg-gray-50 dark:bg-[#020617] transition-colors duration-300"></div>
-        {/* بقعة ضوء زرقة كبيرة ورا المنتجات بتدي منظر وهمي */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 dark:bg-primary/20 blur-[120px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto px-4 relative z-10">
-
-          {/* Header بتاع السكشن */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -179,8 +167,8 @@ const Home = () => {
                   Fresh Drops
                 </h2>
               </div>
-              <p className="text-gray-500 dark:text-gray-400 font-medium tracking-wide pl-2">
-                JUST LANDED IN THE STUDIO
+              <p className="text-gray-500 dark:text-gray-400 font-medium tracking-wide pl-2 uppercase text-sm">
+                Just landed in the studio
               </p>
             </motion.div>
 
@@ -188,14 +176,12 @@ const Home = () => {
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
             >
-              {/* زرار صغير شيك */}
               <Link to="/shop" className="hidden md:flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all duration-300 group">
                 View All <ArrowRight size={20} className="group-hover:text-accent" />
               </Link>
             </motion.div>
           </div>
 
-          {/* Grid المنتجات */}
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
           ) : (
@@ -209,28 +195,24 @@ const Home = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="relative group"
                 >
-                  {/* Badge كلمة New فوق الكارت */}
                   <div className="absolute -top-3 -right-2 z-20 bg-accent text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg rotate-12 group-hover:rotate-0 transition-all duration-300">
                     NEW
                   </div>
-
                   <ProductCard product={product} onOrderClick={() => handleOrderClick(product)} />
                 </motion.div>
               ))}
             </div>
           )}
 
-          {/* زرار الموبايل */}
           <div className="mt-12 text-center md:hidden">
             <Link to="/shop" className="inline-flex items-center gap-2 text-primary font-bold">
               View All Collection <ArrowRight size={20} />
             </Link>
           </div>
-
         </div>
       </section>
 
-      {/* CTA Button Section (مفصول لوحده) */}
+      {/* CTA Button Section */}
       <section className="py-20 bg-white dark:bg-[#0f172a]">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <motion.div

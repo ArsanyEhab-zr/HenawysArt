@@ -61,8 +61,8 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      // 👇👇 التعديل الهام هنا: استخدام ألوان صريحة للدارك مود (Slate-800) 👇👇
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled || isOpen
+      // 👇👇 التعديل هنا: ضفنا notranslate في التاج الرئيسي عشان يغطي الناف بار كله 👇👇
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 notranslate ${isScrolled || isOpen
         ? 'bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-[#334155]'
         : 'bg-white/90 dark:bg-[#1e293b]/90 backdrop-blur-md shadow-sm dark:border-b dark:border-[#334155]/50'
         }`}
@@ -84,6 +84,7 @@ const Navbar = () => {
                 />
               </div>
 
+              {/* شيلنا notranslate من هنا لأننا حطيناه في الأب فوق خلاص */}
               <h1 className="text-2xl md:text-3xl font-script text-primary font-bold">
                 Henawy's Art
               </h1>
@@ -96,7 +97,6 @@ const Navbar = () => {
               <Link key={item.path} to={item.path}>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
-                  // 👇👇 تعديل ألوان الروابط في الدارك مود 👇👇
                   className={`relative px-4 py-2 rounded-lg transition-colors duration-200 font-medium ${isActive(item.path)
                     ? 'text-primary bg-primary/10'
                     : 'text-gray-700 dark:text-[#e2e8f0] hover:text-primary hover:bg-primary/5 dark:hover:bg-[#0f172a]'
@@ -125,11 +125,18 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-2">
+          {/* Mobile Menu Button & Controls */}
+          <div className="md:hidden flex items-center gap-3">
+
+            {/* زرار اللغة للموبايل (بره القائمة) */}
+            <LanguageToggle />
+
+            {/* زرار الثيم للموبايل */}
             <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-[#e2e8f0]">
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </button>
+
+            {/* زرار القائمة */}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-gray-700 dark:text-[#e2e8f0] hover:text-primary transition-colors focus:outline-none p-2"
@@ -148,7 +155,6 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            // 👇👇 القائمة المنسدلة للموبايل بقت غامقة صريح 👇👇
             className="md:hidden bg-white dark:bg-[#1e293b] border-t border-gray-100 dark:border-gray-700 overflow-hidden shadow-xl"
           >
             <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col border-b border-gray-50 dark:border-gray-700">
@@ -164,9 +170,6 @@ const Navbar = () => {
                   {item.label}
                 </Link>
               ))}
-              <div className="pt-4 flex justify-center">
-                <LanguageToggle />
-              </div>
             </div>
           </motion.div>
         )}
