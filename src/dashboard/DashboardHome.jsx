@@ -8,7 +8,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts'
 import { format, subDays } from 'date-fns'
-import VisitorsCard from './VisitorsCard'// 👈 استيراد كارت الزوار الجديد
+import VisitorsCard from './VisitorsCard'
 
 const DashboardHome = () => {
     const [stats, setStats] = useState({
@@ -22,6 +22,38 @@ const DashboardHome = () => {
     const [recentOrders, setRecentOrders] = useState([])
     const [loading, setLoading] = useState(true)
 
+    // 👇👇👇 1. كود الإجبار (Force Light Mode & English) 👇👇👇
+    useEffect(() => {
+        // أ. إلغاء الدارك مود
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+        document.body.style.backgroundColor = '#f3f4f6'; // لون رصاصي فاتح للداش بورد
+        document.body.style.color = '#1f2937'; // لون نص غامق
+
+        // ب. ضبط الاتجاه لليسار
+        document.body.dir = 'ltr';
+
+        // ج. قتل ترجمة جوجل (مسح الكوكيز)
+        const killGoogleTranslate = () => {
+            const cookies = document.cookie.split(';');
+            const transCookie = cookies.find(c => c.trim().startsWith('googtrans='));
+
+            if (transCookie) {
+                // تصفير الكوكيز لكل النطاقات المحتملة
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.vercel.app";
+
+                // ريلود عشان ينضف الصفحة
+                window.location.reload();
+            }
+        };
+
+        killGoogleTranslate();
+    }, []);
+    // 👆👆👆 نهاية كود الإجبار 👆👆👆
+
+
     useEffect(() => {
         fetchDashboardData()
     }, [])
@@ -30,7 +62,7 @@ const DashboardHome = () => {
         try {
             setLoading(true)
 
-            // 1. جلب كل الطلبات لحساب الإحصائيات
+            // 1. جلب كل الطلبات
             const { data: allOrders, error: ordersError } = await supabase
                 .from('orders')
                 .select('*')
@@ -43,32 +75,25 @@ const DashboardHome = () => {
                 .from('products')
                 .select('*')
                 .order('sold_count', { ascending: false })
-                .limit(5) // هات أعلى 5 منتجات مبيعاً
+                .limit(5)
 
             if (productsError) throw productsError
 
-            // --- 🧠 معالجة البيانات (Calculations) ---
-
+            // --- المعالجة والحسابات ---
             let revenue = 0
             let active = 0
             let completed = 0
 
             allOrders.forEach(order => {
-                const status = order.status; // pending, confirmed, shipped, delivered, cancelled
+                const status = order.status;
                 const amount = Number(order.total_price || 0);
 
-                // أ. حساب الريفنيو (الأرباح)
-                // بنحسب الفلوس لو الحالة: مؤكد، أو خرج للشحن، أو وصل
                 if (['confirmed', 'shipped', 'delivered'].includes(status)) {
                     revenue += amount;
                 }
-
-                // ب. حساب الطلبات النشطة (لسه مخلصتش)
                 if (['pending', 'confirmed', 'shipped'].includes(status)) {
                     active++;
                 }
-
-                // ج. حساب الطلبات المكتملة (وصلت للعميل)
                 if (status === 'delivered') {
                     completed++;
                 }
@@ -81,7 +106,7 @@ const DashboardHome = () => {
                 totalProducts: products.length
             })
 
-            // --- د. تجهيز الرسم البياني (Sales Chart - Last 7 Days) ---
+            // تجهيز الرسم البياني
             const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const d = subDays(new Date(), i)
                 return format(d, 'MMM dd')
@@ -91,7 +116,7 @@ const DashboardHome = () => {
                 const daySales = allOrders
                     .filter(o =>
                         format(new Date(o.created_at), 'MMM dd') === dateStr &&
-                        ['confirmed', 'shipped', 'delivered'].includes(o.status) // شرط الفلوس المؤكدة
+                        ['confirmed', 'shipped', 'delivered'].includes(o.status)
                     )
                     .reduce((sum, o) => sum + Number(o.total_price || 0), 0)
 
@@ -99,7 +124,6 @@ const DashboardHome = () => {
             })
             setSalesData(chartData)
 
-            // هـ. باقي البيانات
             setTopProducts(products)
             setRecentOrders(allOrders.slice(0, 5))
 
@@ -115,7 +139,7 @@ const DashboardHome = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 text-left" dir="ltr"> {/* تأكيد الاتجاه */}
 
             {/* 1. Header */}
             <div>
@@ -124,10 +148,9 @@ const DashboardHome = () => {
             </div>
 
             {/* 2. Stats Cards */}
-            {/* 👇 عدلت الـ grid عشان يستوعب الكارت الجديد بشكل متناسق */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
 
-                {/* 🟢 كارت الزوار الجديد في الأول */}
+                {/* كارت الزوار */}
                 <VisitorsCard />
 
                 <StatCard
@@ -241,7 +264,7 @@ const DashboardHome = () => {
                                                 order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
                                                     order.status === 'shipped' ? 'bg-purple-100 text-purple-700' :
                                                         order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                            'bg-yellow-100 text-yellow-700' // Pending
+                                                            'bg-yellow-100 text-yellow-700'
                                             }`}>
                                             {order.status ? order.status.toUpperCase() : 'PENDING'}
                                         </span>
