@@ -111,9 +111,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         throw new Error("This coupon has reached its usage limit.")
       }
 
-      // ⚠️ ملحوظة: شلنا التحقق من استخدام العميل للكوبون قبل كده برقم التليفون من هنا، 
-      // وهننقل التحقق ده لخطوة الدفع النهائية عشان رقم التليفون مبقاش موجود في المودال ده.
-
       setAppliedCoupon(couponData)
       setCouponMsg({ type: 'success', text: `Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` })
     } catch (err) {
@@ -198,7 +195,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (error) { return null }
   }
 
-  // 👇 دالة الإضافة للسلة بدل الـ Checkout المباشر
   const handleAddToCart = async (e, closeAfterAdd = true) => {
     e.preventDefault()
 
@@ -214,7 +210,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       }
     }
 
-    // تجهيز عنصر السلة
     const cartItem = {
       product: product,
       selections: selections,
@@ -230,13 +225,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       }
     }
 
-    // إضافة للسلة باستخدام הـ Context
     addToCart(cartItem)
 
     setIsUploading(false)
     if (closeAfterAdd) {
       onClose()
-      // ممكن هنا تظهر Toaster صغير يقوله "Added to Cart"
     }
   }
 
@@ -267,9 +260,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <span className="text-lg font-bold text-accent">Price varies (Base: {product.price} EGP)</span>
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    {/* 👇 الإجمالي هنا للمنتج ده بس (بدون شحن) لأن الشحن هيتحسب في السلة ككل */}
+                    {/* 👇 الإجمالي الديناميكي: لو السعر اتغير (إضافات أو خصم)، بيشطب ع القديم ويكتب الجديد */}
                     <span className="text-3xl font-bold text-accent drop-shadow-sm">{finalProductPrice} <span className="text-lg">EGP</span></span>
-                    {appliedCoupon && <span className="text-sm text-white/70 line-through">{productTotalBeforeDiscount} EGP</span>}
+                    {finalProductPrice !== Number(product.price) && (
+                      <span className="text-sm text-white/70 line-through">{product.price} EGP</span>
+                    )}
                   </div>
                 )}
               </div>

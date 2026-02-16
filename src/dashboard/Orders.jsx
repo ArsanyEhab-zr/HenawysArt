@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
-    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock, RefreshCw
+    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock, RefreshCw, ImagePlus // ضفت ImagePlus
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -13,7 +13,6 @@ const Orders = () => {
     const [selectedCategory, setSelectedCategory] = useState('All')
     const [selectedOrder, setSelectedOrder] = useState(null)
 
-    // 👇 خريطة المنتجات
     const [productsMap, setProductsMap] = useState({})
 
     const STATUS_OPTIONS = [
@@ -35,7 +34,7 @@ const Orders = () => {
 
     const fetchCategories = async () => {
         try {
-            const { data, error } = await supabase.from('products').select('id, category')
+            const { data, error } = await supabase.from('products').select('id, category, price')
             if (error) throw error
 
             const uniqueCategories = ['All', ...new Set(data.map(item => item.category).filter(Boolean))]
@@ -43,7 +42,7 @@ const Orders = () => {
 
             const map = {}
             data.forEach(product => {
-                map[product.id] = product.category
+                map[product.id] = { category: product.category, basePrice: product.price }
             })
             setProductsMap(map)
 
@@ -111,7 +110,6 @@ const Orders = () => {
         };
     }
 
-    // 👇 الفلتر الجديد عشان يدعم السلة والأوردرات القديمة مع بعض
     const filteredOrders = orders.filter(o => {
         const matchesSearch =
             (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -121,12 +119,11 @@ const Orders = () => {
         let matchesCategory = true;
         if (selectedCategory !== 'All') {
             const filterCategory = selectedCategory.toLowerCase().trim();
-            // توحيد شكل الأوردر لمصفوفة دايماً حتى لو كان القديم (Object واحد)
             const itemsArray = Array.isArray(o.items) ? o.items : (o.items ? [o.items] : []);
 
             matchesCategory = itemsArray.some(item => {
-                const pId = item?.product?.id || item?.productId; // النظام الجديد || النظام القديم
-                const orderCategory = (productsMap[pId] || '').toLowerCase().trim();
+                const pId = item?.product?.id || item?.productId;
+                const orderCategory = (productsMap[pId]?.category || '').toLowerCase().trim();
                 return orderCategory === filterCategory;
             });
         }
@@ -206,15 +203,17 @@ const Orders = () => {
                                 {filteredOrders.map((order) => {
                                     const statusInfo = getStatusInfo(order.status);
 
-                                    // 👇 توحيد البيانات عشان الجدول يعرض أول منتج في الأوردر (حتى لو مجمع)
                                     const itemsArray = Array.isArray(order.items) ? order.items : (order.items ? [order.items] : []);
                                     const firstItem = itemsArray[0] || {};
                                     const isNewFormat = !!firstItem.product;
 
                                     const pId = isNewFormat ? firstItem.product?.id : firstItem.productId;
                                     const pName = isNewFormat ? firstItem.product?.title : firstItem.productName;
-                                    const displayImg = isNewFormat ? (firstItem.product?.images?.[0] || firstItem.refImage) : firstItem.refImage;
-                                    const categoryName = productsMap[pId] || 'N/A';
+
+                                    // 👇👇 التعديل 1: صورة العميل المرفوعة دايماً بتكسب 👇👇
+                                    const displayImg = firstItem.refImage || (isNewFormat ? firstItem.product?.images?.[0] : null);
+
+                                    const categoryName = productsMap[pId]?.category || 'N/A';
 
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -243,7 +242,6 @@ const Orders = () => {
                                                     <div>
                                                         <div className="font-bold text-gray-800 line-clamp-1">
                                                             {pName || 'Unknown Item'}
-                                                            {/* 👇 لو الأوردر فيه أكتر من منتج نوضحله */}
                                                             {itemsArray.length > 1 && (
                                                                 <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                                                                     +{itemsArray.length - 1} items
@@ -311,7 +309,7 @@ const Orders = () => {
                 )}
             </div>
 
-            {/* 👇 نافذة عرض التفاصيل (Modal) معدلة لعرض مصفوفة المنتجات 👇 */}
+            {/* Modal */}
             {selectedOrder && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedOrder(null)}>
                     <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
@@ -343,7 +341,7 @@ const Orders = () => {
                                 </div>
                             </div>
 
-                            {/* 👇 الدوران على كل المنتجات اللي جوه الطلب عشان نعرضها */}
+                            {/* قائمة المنتجات */}
                             {(() => {
                                 const itemsArray = Array.isArray(selectedOrder.items) ? selectedOrder.items : (selectedOrder.items ? [selectedOrder.items] : []);
 
@@ -358,11 +356,28 @@ const Orders = () => {
                                                 const pId = isNewFormat ? item.product?.id : item.productId;
                                                 const pName = isNewFormat ? item.product?.title : item.productName;
                                                 const refImg = item.refImage;
-                                                const displayImg = isNewFormat ? (item.product?.images?.[0] || refImg) : refImg;
-                                                const catName = productsMap[pId] || 'N/A';
 
-                                                // في النظام القديم السعر كان للإجمالي، في الجديد كل منتج له سعره
-                                                const price = isNewFormat ? `${item.pricing?.finalPrice} EGP` : 'Included';
+                                                // 👇👇 التعديل 2: الأولوية لصورة العميل المرفوعة 👇👇
+                                                const displayImg = refImg || (isNewFormat ? item.product?.images?.[0] : null);
+
+                                                const catName = productsMap[pId]?.category || 'N/A';
+
+                                                const basePrice = isNewFormat ? item.pricing?.basePrice : (productsMap[pId]?.basePrice || 0);
+                                                let finalPrice = isNewFormat ? item.pricing?.finalPrice : 0;
+                                                let hasChanges = false;
+
+                                                if (!isNewFormat) {
+                                                    let totalOld = basePrice;
+                                                    if (item.addons) {
+                                                        Object.values(item.addons).forEach(a => {
+                                                            if (a.operation_type === 'fixed') totalOld += Number(a.value);
+                                                        });
+                                                    }
+                                                    finalPrice = totalOld;
+                                                    hasChanges = finalPrice !== basePrice;
+                                                } else {
+                                                    hasChanges = item.pricing?.basePrice !== item.pricing?.finalPrice || Object.keys(item.selections || {}).length > 0;
+                                                }
 
                                                 return (
                                                     <div key={idx} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
@@ -377,7 +392,17 @@ const Orders = () => {
                                                                     <p className="font-bold text-gray-800 text-base">{pName || 'Unknown Item'}</p>
                                                                     <span className="text-[10px] bg-white border px-2 py-0.5 rounded text-gray-500 mt-1 inline-block">{catName}</span>
                                                                 </div>
-                                                                {isNewFormat && <p className="font-bold text-primary text-sm">{price}</p>}
+
+                                                                <div className="text-right">
+                                                                    {(hasChanges && basePrice) ? (
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="text-sm font-bold text-primary">{finalPrice} EGP</span>
+                                                                            <span className="text-[10px] text-gray-400 line-through">{basePrice} EGP</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-sm font-bold text-primary">{finalPrice ? `${finalPrice} EGP` : 'Included'}</span>
+                                                                    )}
+                                                                </div>
                                                             </div>
 
                                                             {item.customText && (
@@ -394,22 +419,32 @@ const Orders = () => {
                                                                     <span className="font-semibold">Add-ons:</span> {Object.values(item.selections).map(a => a.title).join(', ')}
                                                                 </p>
                                                             )}
+                                                            {item.addons && Object.keys(item.addons).length > 0 && (
+                                                                <p className="text-xs mt-1 text-gray-500">
+                                                                    <span className="font-semibold">Add-ons:</span> {Object.values(item.addons).map(a => a.title).join(', ')}
+                                                                </p>
+                                                            )}
+
+                                                            {/* 👇👇 التعديل 3: زرار يفتح صورة العميل لوحدها عشان تشوفها بوضوح 👇👇 */}
+                                                            {item.refImage && (
+                                                                <a href={item.refImage} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[11px] bg-blue-100 text-blue-700 px-2 py-1.5 rounded-md border border-blue-200 hover:bg-blue-200 transition-colors font-bold w-fit">
+                                                                    <ImagePlus size={14} /> Open Customer Image
+                                                                </a>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )
                                             })}
                                         </div>
 
-                                        {/* الإجمالي الكلي للطلب */}
                                         <div className="mt-4 flex justify-between items-center bg-gray-100 p-3 rounded-lg border border-gray-200">
-                                            <span className="text-sm font-bold text-gray-600">Grand Total</span>
+                                            <span className="text-sm font-bold text-gray-600">Grand Total (inc. Shipping)</span>
                                             <span className="text-lg font-bold text-primary">{selectedOrder.total_price} EGP</span>
                                         </div>
                                     </div>
                                 )
                             })()}
 
-                            {/* دي لو في نوتس مكتوبة على مستوى الأوردر كله (أغلبها للنظام القديم) */}
                             {selectedOrder.notes && !Array.isArray(selectedOrder.items) && (
                                 <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
                                     <h4 className="text-xs font-bold uppercase text-yellow-800 mb-2">Order Notes</h4>

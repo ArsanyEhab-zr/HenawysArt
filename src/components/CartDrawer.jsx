@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, User, Store, Truck, Navigation, Check, AlertCircle } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, User, Store, Truck, Navigation, Check, AlertCircle, Wallet } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
@@ -11,11 +11,10 @@ const CartDrawer = ({ isOpen, onClose }) => {
     const [shippingRatesList, setShippingRatesList] = useState([]);
     const [shippingLoading, setShippingLoading] = useState(true);
     const [isLocating, setIsLocating] = useState(false);
+    const [gpsError, setGpsError] = useState('');
 
-    // حساب الإجمالي لكل منتج في السلة
     const cartSubtotal = cartItems.reduce((acc, item) => acc + item.pricing.finalPrice, 0);
 
-    // جلب أسعار الشحن
     useEffect(() => {
         if (isOpen) {
             fetchShippingRates();
@@ -35,17 +34,58 @@ const CartDrawer = ({ isOpen, onClose }) => {
         }
     };
 
-    // حساب الشحن الكلي
     const selectedShippingData = shippingRatesList.find(r => r.governorate === userInfo.governorate);
     const baseShippingFee = selectedShippingData?.fee || 0;
-    const estimatedDays = selectedShippingData?.estimated_days || '10-14 days';
+    const estimatedDays = selectedShippingData?.estimated_days || '';
     const finalShippingFee = userInfo.deliveryMethod === 'pickup' ? 0 : baseShippingFee;
 
     const grandTotal = cartSubtotal + finalShippingFee;
 
-    // جلب الموقع
+    const autoSelectGovernorate = (addressData) => {
+        if (!addressData || shippingRatesList.length === 0) return;
+
+        const fullText = (addressData.display_name || '').toLowerCase();
+        let detectedGov = '';
+
+        if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
+            if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
+                const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
+                if (match) detectedGov = match.governorate;
+            }
+            else if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
+                const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('borg'));
+                if (match) detectedGov = match.governorate;
+            }
+
+            if (!detectedGov) {
+                const centerMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('center') && r.governorate.toLowerCase().includes('alexandria'));
+                if (centerMatch) {
+                    detectedGov = centerMatch.governorate;
+                } else {
+                    const fallbackMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('alexandria'));
+                    if (fallbackMatch) detectedGov = fallbackMatch.governorate;
+                }
+            }
+        }
+        else {
+            const foundRate = shippingRatesList.find(rate => {
+                const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
+                return fullText.includes(cleanName);
+            });
+            if (foundRate) detectedGov = foundRate.governorate;
+        }
+
+        if (detectedGov) {
+            updateUserInfo({ governorate: detectedGov });
+            setGpsError('');
+        } else {
+            setGpsError('Detected address, but could not match city automatically.');
+        }
+    }
+
     const handleGetLocation = () => {
         setIsLocating(true);
+        setGpsError('');
         if (!navigator.geolocation) { alert("Geolocation is not supported"); setIsLocating(false); return; }
 
         navigator.geolocation.getCurrentPosition(
@@ -59,13 +99,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                     const data = await response.json();
                     if (data && data.display_name) {
                         updateUserInfo({ address: data.display_name });
-
-                        // محاولة اختيار المحافظة تلقائياً
-                        const fullText = data.display_name.toLowerCase();
-                        let detectedGov = '';
-                        const foundRate = shippingRatesList.find(rate => fullText.includes(rate.governorate.toLowerCase().replace('governorate', '').trim()));
-                        if (foundRate) detectedGov = foundRate.governorate;
-                        if (detectedGov) updateUserInfo({ governorate: detectedGov });
+                        autoSelectGovernorate(data);
                     }
                 } catch (error) { console.error(error); }
                 setIsLocating(false);
@@ -77,7 +111,6 @@ const CartDrawer = ({ isOpen, onClose }) => {
         );
     };
 
-    // تأكيد الطلب
     const handleCheckout = async (e) => {
         e.preventDefault();
 
@@ -95,7 +128,6 @@ const CartDrawer = ({ isOpen, onClose }) => {
         const finalAddress = userInfo.deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : userInfo.address;
 
         try {
-            // حفظ الأوردر في الداتا بيز كطلب واحد جواه مصفوفة منتجات
             const { error: orderError } = await supabase.from('orders').insert([{
                 customer_name: userInfo.customerName,
                 phone: userInfo.phone,
@@ -104,23 +136,18 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 total_price: grandTotal,
                 shipping_fee: finalShippingFee,
                 status: 'pending',
-                items: cartItems // بنحفظ السلة كلها كأوبجيكت واحد أو مصفوفة
+                items: cartItems
             }]);
 
             if (orderError) throw orderError;
 
-            // 👇 التعديل الهام: نلف على كل منتج في السلة ونزود مبيعاته ونزود الكوبون
             for (const item of cartItems) {
-                // تزويد مبيعات المنتج
                 await supabase.rpc('increment_sold_count', { product_id: item.product.id });
-
-                // تزويد استخدام الكوبون لو موجود في المنتج ده
                 if (item.appliedCoupon) {
                     await supabase.rpc('increment_coupon_usage', { coupon_code: item.appliedCoupon.code });
                 }
             }
 
-            // بناء رسالة الواتساب المجمعة
             let message = `*NEW BATCH ORDER* 🛒🛒\n`;
             message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
             message += `--------------------------------\n`;
@@ -134,6 +161,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 message += `> Type: Home Delivery 🚚\n`;
                 message += `> City: ${userInfo.governorate}\n`;
                 message += `> Address: ${userInfo.address}\n`;
+                message += `> Delivery Time: ${estimatedDays}\n`;
                 if (userInfo.locationLink) message += `> GPS: ${userInfo.locationLink}\n`;
             }
             message += `\n========================\n`;
@@ -145,7 +173,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 if (item.customText) message += `   • Text: "${item.customText}"\n`;
                 if (item.bgColor) message += `   • Color: ${item.bgColor}\n`;
                 if (item.notes) message += `   • Notes: ${item.notes}\n`;
-                if (item.refImage) message += `   • Ref Image: Attached\n`;
+
+                // 👇👇👇 الصليحة هنا: لو في صورة هتتبعت كلينك صريح للواتساب 👇👇👇
+                if (item.refImage) message += `   • Ref Image: ${item.refImage}\n`;
 
                 const addOns = Object.values(item.selections);
                 if (addOns.length > 0) {
@@ -200,7 +230,6 @@ const CartDrawer = ({ isOpen, onClose }) => {
                         onClick={e => e.stopPropagation()}
                         className="w-full max-w-md bg-white dark:bg-[#0f172a] h-full shadow-2xl flex flex-col"
                     >
-                        {/* Header */}
                         <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-[#1e293b]">
                             <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white">
                                 <ShoppingBag className="text-primary" /> Your Cart
@@ -218,11 +247,10 @@ const CartDrawer = ({ isOpen, onClose }) => {
                             </div>
                         ) : (
                             <>
-                                {/* Cart Items List */}
                                 <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-white dark:bg-[#0f172a]">
                                     {cartItems.map((item) => (
                                         <div key={item.cartItemId} className="flex gap-4 p-3 bg-gray-50 dark:bg-[#1e293b] border border-gray-100 dark:border-gray-700 rounded-xl relative group">
-                                            <img src={item.product.images[0] || '/placeholder.png'} className="w-20 h-20 object-cover rounded-lg" alt="" />
+                                            <img src={item.refImage || item.product.images[0] || '/placeholder.png'} className="w-20 h-20 object-cover rounded-lg" alt="" />
                                             <div className="flex-1">
                                                 <h4 className="font-bold text-gray-800 dark:text-white text-sm pr-6 line-clamp-2">{item.product.title}</h4>
                                                 {item.customText && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">📝 "{item.customText}"</p>}
@@ -238,7 +266,6 @@ const CartDrawer = ({ isOpen, onClose }) => {
                                     ))}
                                 </div>
 
-                                {/* Checkout Form */}
                                 <form onSubmit={handleCheckout} className="border-t border-gray-100 dark:border-gray-800 p-5 space-y-4 bg-gray-50 dark:bg-[#1e293b]">
                                     <div className="grid grid-cols-2 gap-3">
                                         <input type="text" placeholder="Full Name" required value={userInfo.customerName} onChange={e => updateUserInfo({ customerName: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-[#0f172a] dark:text-white dark:border-gray-700 focus:border-primary outline-none" />
@@ -256,19 +283,57 @@ const CartDrawer = ({ isOpen, onClose }) => {
 
                                     {userInfo.deliveryMethod === 'shipping' && (
                                         <div className="space-y-3">
-                                            <select required value={userInfo.governorate} onChange={e => updateUserInfo({ governorate: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-[#0f172a] dark:text-white dark:border-gray-700 outline-none">
-                                                <option value="">Select Governorate</option>
-                                                {shippingRatesList.map(r => <option key={r.id} value={r.governorate}>{r.governorate} (+{r.fee})</option>)}
-                                            </select>
+                                            <div>
+                                                <div className="relative">
+                                                    <select required value={userInfo.governorate} onChange={e => updateUserInfo({ governorate: e.target.value })} className={`w-full px-3 py-2 border rounded-lg text-sm appearance-none dark:bg-[#0f172a] dark:text-white dark:border-gray-700 outline-none ${gpsError ? 'border-yellow-400' : ''}`}>
+                                                        <option value="">{shippingLoading ? "Loading rates..." : "Select Governorate"}</option>
+                                                        {shippingRatesList.map(r => <option key={r.id} value={r.governorate}>{r.governorate} (+{r.fee})</option>)}
+                                                    </select>
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                                                </div>
+                                                {gpsError && <p className="text-[10px] text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
+                                            </div>
 
                                             <div className="relative">
-                                                <textarea required rows={2} placeholder="Full Address..." value={userInfo.address} onChange={e => updateUserInfo({ address: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm resize-none dark:bg-[#0f172a] dark:text-white dark:border-gray-700 outline-none pr-8" />
-                                                <button type="button" onClick={handleGetLocation} className="absolute right-2 top-2 text-primary hover:text-primary-dark"><Navigation size={16} /></button>
+                                                <textarea required rows={2} placeholder="Full Address (Street, Bldg, Floor)..." value={userInfo.address} onChange={e => updateUserInfo({ address: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm resize-none dark:bg-[#0f172a] dark:text-white dark:border-gray-700 outline-none pr-10" />
+                                                <button type="button" onClick={handleGetLocation} disabled={isLocating} className="absolute right-2 top-2 p-1.5 text-white bg-primary hover:bg-primary-dark rounded-md transition-all">
+                                                    {isLocating ? <Loader2 size={14} className="animate-spin" /> : userInfo.locationLink ? <Check size={14} /> : <Navigation size={14} />}
+                                                </button>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Totals */}
+                                    <div className="grid grid-cols-1 gap-2 pt-2">
+                                        <div className="bg-blue-50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800 rounded-lg p-2 flex flex-col justify-center">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <AlertCircle size={14} className="text-blue-600 dark:text-blue-400" />
+                                                <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">Order Timeline</span>
+                                            </div>
+                                            <p className="text-[10px] text-blue-700 dark:text-blue-200">
+                                                • Preparation: <span className="font-bold">10 to 14 days</span>
+                                            </p>
+                                            {userInfo.deliveryMethod === 'shipping' && userInfo.governorate && (
+                                                <p className="text-[10px] text-blue-700 dark:text-blue-200 mt-0.5">
+                                                    • Shipping: <span className="font-bold">{estimatedDays}</span>
+                                                </p>
+                                            )}
+                                            {userInfo.deliveryMethod === 'pickup' && (
+                                                <p className="text-[10px] text-blue-700 dark:text-blue-200 mt-0.5">
+                                                    • Shipping: <span className="font-bold">Pickup from Store</span>
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-purple-50 border border-purple-100 dark:bg-purple-900/10 dark:border-purple-800 rounded-lg p-2">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <Wallet size={14} className="text-purple-600 dark:text-purple-400" />
+                                                <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300 uppercase">Payment Policy</span>
+                                            </div>
+                                            <p className="text-[10px] text-purple-700 dark:text-purple-200 font-medium">50% Deposit via Wallet.</p>
+                                            <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase flex items-center gap-1">🚫 No Instapay</p>
+                                        </div>
+                                    </div>
+
                                     <div className="pt-2">
                                         <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-1">
                                             <span>Subtotal ({cartItems.length} items)</span>
