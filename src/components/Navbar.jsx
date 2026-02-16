@@ -1,4 +1,4 @@
-Import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { MoreVertical, X, Moon, Sun, ShoppingCart } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
