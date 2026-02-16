@@ -75,7 +75,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const selectedShippingData = shippingRatesList.find(r => r.governorate === governorate);
   const baseShippingFee = selectedShippingData?.fee || 0;
   // 👇 جلب مدة الشحن المتغيرة (أو فارغة لو لسه مختارش)
-  const estimatedDays = selectedShippingData?.estimated_days || ''; 
+  const estimatedDays = selectedShippingData?.estimated_days || '';
   const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee;
 
   useEffect(() => {
@@ -665,8 +665,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <div
                       onClick={() => setDeliveryMethod('shipping')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'shipping'
-                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Truck size={18} /> Home Delivery
@@ -674,8 +674,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <div
                       onClick={() => setDeliveryMethod('pickup')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'pickup'
-                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Store size={18} /> Pickup (Henawy's)
