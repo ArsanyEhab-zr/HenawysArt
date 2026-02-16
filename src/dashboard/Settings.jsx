@@ -60,11 +60,12 @@ const Settings = () => {
     }
 
     // ==================== SHIPPING LOGIC ====================
-    const handleUpdateShipping = async (id, newFee) => {
+    // 👇 تعديل لاستقبال المدة الجديدة
+    const handleUpdateShipping = async (id, newFee, newDays) => {
         try {
             const { error } = await supabase
                 .from('shipping_rates')
-                .update({ fee: newFee })
+                .update({ fee: newFee, estimated_days: newDays })
                 .eq('id', id)
 
             if (error) throw error
@@ -72,7 +73,7 @@ const Settings = () => {
 
             // Update local state
             setShippingRates(prev => prev.map(item =>
-                item.id === id ? { ...item, fee: newFee } : item
+                item.id === id ? { ...item, fee: newFee, estimated_days: newDays } : item
             ))
         } catch (error) {
             toast.error("Error updating rate")
@@ -180,28 +181,52 @@ const Settings = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-6 border-b border-gray-100">
                         <h2 className="text-lg font-bold text-gray-800">Manage Shipping Fees</h2>
-                        <p className="text-sm text-gray-500">Set delivery cost for each governorate.</p>
+                        <p className="text-sm text-gray-500">Set delivery cost and estimated days for each governorate.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-                        {shippingRates.map((rate) => (
-                            <div key={rate.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className="font-medium text-gray-700">{rate.governorate}</span>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        defaultValue={rate.fee}
-                                        onBlur={(e) => {
-                                            if (Number(e.target.value) !== rate.fee) {
-                                                handleUpdateShipping(rate.id, e.target.value)
-                                            }
-                                        }}
-                                        className="w-20 px-2 py-1 border rounded text-center font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
-                                    <span className="text-xs text-gray-400">EGP</span>
+                        {shippingRates.map((rate) => {
+                            // 👇 ضفنا states داخلية عشان التعديل يبقى أسهل للمستخدم
+                            const [localFee, setLocalFee] = useState(rate.fee)
+                            const [localDays, setLocalDays] = useState(rate.estimated_days || '10-14 days')
+
+                            return (
+                                <div key={rate.id} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <span className="font-bold text-gray-800">{rate.governorate}</span>
+                                    <div className="flex flex-col gap-2 mt-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-500 font-bold">Fee (EGP):</span>
+                                            <input
+                                                type="number"
+                                                value={localFee}
+                                                onChange={e => setLocalFee(e.target.value)}
+                                                onBlur={(e) => {
+                                                    if (Number(e.target.value) !== rate.fee || localDays !== rate.estimated_days) {
+                                                        handleUpdateShipping(rate.id, e.target.value, localDays)
+                                                    }
+                                                }}
+                                                className="w-20 px-2 py-1 border rounded text-center font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-500 font-bold">Days:</span>
+                                            <input
+                                                type="text"
+                                                value={localDays}
+                                                onChange={e => setLocalDays(e.target.value)}
+                                                onBlur={(e) => {
+                                                    if (Number(localFee) !== rate.fee || e.target.value !== rate.estimated_days) {
+                                                        handleUpdateShipping(rate.id, localFee, e.target.value)
+                                                    }
+                                                }}
+                                                placeholder="e.g. 3-5 days"
+                                                className="w-24 px-2 py-1 border rounded text-center text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                     {shippingRates.length === 0 && <div className="p-6 text-center text-gray-500">No rates found. Please run SQL setup.</div>}
                 </div>

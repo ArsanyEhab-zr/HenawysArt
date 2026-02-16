@@ -71,9 +71,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // 👇 تعديل حساب الشحن: لو استلام يبقى صفر، لو شحن يبقى حسب المحافظة
-  const baseShippingFee = shippingRatesList.find(r => r.governorate === governorate)?.fee || 0
-  const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee
+  // 👇 تعديل حساب الشحن والمدة:
+  const selectedShippingData = shippingRatesList.find(r => r.governorate === governorate);
+  const baseShippingFee = selectedShippingData?.fee || 0;
+  const estimatedDays = selectedShippingData?.estimated_days || '10-14 days';
+  const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee;
 
   useEffect(() => {
     if (isOpen) {
@@ -401,13 +403,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     message += `> Name: ${customerName}\n`;
     message += `> Phone: ${phone}\n`;
 
-    // 👇 تغيير الرسالة حسب طريقة الاستلام
+    // 👇 تغيير الرسالة حسب طريقة الاستلام مع إضافة المدة
     if (deliveryMethod === 'pickup') {
       message += `> Type: *PICKUP @ HENAWY'S ART* 🏠\n`;
+      message += `> Ready in: ${estimatedDays}\n`;
     } else {
       message += `> Type: Home Delivery 🚚\n`;
       message += `> City: ${governorate}\n`;
       message += `> Address: ${address}\n`;
+      message += `> Delivery Time: ${estimatedDays}\n`; // 👇 المدة هنا
       if (locationLink) message += `> GPS: ${locationLink}\n`;
     }
     message += `\n`;
@@ -459,7 +463,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
 
     message += `\n*IMPORTANT NOTES*\n`;
-    message += `1. Delivery: 10-14 Working Days.\n`;
+    message += `1. Delivery: ${estimatedDays}.\n`; // 👇 المدة في الملاحظات
     message += `2. Payment: 50% Deposit required via Wallet.\n`;
 
     if (uploadedImageUrl) {
@@ -513,7 +517,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     {deliveryMethod === 'pickup' ? (
                       <span className="flex items-center bg-green-500/20 px-2 py-0.5 rounded text-white"><Store size={10} className="mr-1" /> Pickup: Free</span>
                     ) : (
-                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee}</span>
+                      // 👇 عرضنا المدة جنب سعر الشحن
+                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee} EGP ({estimatedDays})</span>
                     )}
                   </div>
                 )}
@@ -651,15 +656,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none" required />
                 </div>
 
-                {/* 👇 خيارات التوصيل (جديد) */}
+                {/* 👇 خيارات التوصيل */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3">Delivery Method</label>
                   <div className="grid grid-cols-2 gap-4">
                     <div
                       onClick={() => setDeliveryMethod('shipping')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'shipping'
-                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Truck size={18} /> Home Delivery
@@ -667,8 +672,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <div
                       onClick={() => setDeliveryMethod('pickup')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'pickup'
-                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Store size={18} /> Pickup (Henawy's)
@@ -695,9 +700,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                             onChange={e => setGovernorate(e.target.value)}
                             className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 appearance-none cursor-pointer outline-none focus:border-primary ${gpsError ? 'border-yellow-400' : ''}`}
                             required={deliveryMethod === 'shipping'} // اجباري فقط لو شحن
-                            disabled={true}
                           >
-                            <option value="">{shippingLoading ? "Loading rates..." : "Detected automatically below 👇"}</option>
+                            <option value="">{shippingLoading ? "Loading rates..." : "Select your city"}</option>
                             {shippingRatesList.map(rate => (
                               <option key={rate.id} value={rate.governorate}>
                                 {rate.governorate} (+{rate.fee} EGP)
@@ -727,14 +731,14 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               {/* Info Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Delivery Card */}
+                {/* 👇 Delivery Card (متغير حسب المحافظة) */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertCircle size={16} className="text-blue-600" />
                     <span className="text-xs font-bold text-blue-800 uppercase">Delivery Time</span>
                   </div>
                   <p className="text-xs text-blue-700 leading-relaxed">
-                    Order takes <span className="font-bold">10 to 14 days</span> to be ready.
+                    Ready in <span className="font-bold">{estimatedDays}</span>.
                   </p>
                 </div>
 
