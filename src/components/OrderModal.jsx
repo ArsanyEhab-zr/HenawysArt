@@ -733,15 +733,26 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               {/* Info Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 👇 حافظت على جملة تجهيز الأوردر زي ما هي */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertCircle size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-blue-800 uppercase">Preparation Time</span>
+                    <span className="text-xs font-bold text-blue-800 uppercase">Order Timeline</span>
                   </div>
                   <p className="text-xs text-blue-700 leading-relaxed">
-                    Order takes <span className="font-bold">10 to 14 days</span> to be ready.
+                    • Preparation: <span className="font-bold">10 to 14 days</span>
                   </p>
+                  {/* 👇 السطر الجديد: هيظهر مدة الشحن لو هو مختار توصيل ومختار المحافظة */}
+                  {deliveryMethod === 'shipping' && governorate && (
+                    <p className="text-xs text-blue-700 leading-relaxed mt-0.5">
+                      • Shipping: <span className="font-bold">{estimatedDays}</span>
+                    </p>
+                  )}
+                  {/* لو مختار استلام من المقر */}
+                  {deliveryMethod === 'pickup' && (
+                    <p className="text-xs text-blue-700 leading-relaxed mt-0.5">
+                      • Shipping: <span className="font-bold">Pickup from Store</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Payment Card */}
