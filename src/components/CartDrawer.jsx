@@ -92,7 +92,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
             async (position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                updateUserInfo({ locationLink: `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}` });
+                updateUserInfo({ locationLink: `https://maps.google.com/?q=${lat},${lng}` });
 
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`);
