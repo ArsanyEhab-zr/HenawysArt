@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, User, Store, Truck, Navigation, Check, AlertCircle, Wallet } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, Store, Truck, Navigation, Check, AlertCircle, Wallet, Tag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
@@ -13,7 +13,27 @@ const CartDrawer = ({ isOpen, onClose }) => {
     const [isLocating, setIsLocating] = useState(false);
     const [gpsError, setGpsError] = useState('');
 
-    const cartSubtotal = cartItems.reduce((acc, item) => acc + item.pricing.finalPrice, 0);
+    // 👇 ستيت كوبون السلة
+    const [cartCouponCode, setCartCouponCode] = useState('');
+    const [appliedCartCoupon, setAppliedCartCoupon] = useState(null);
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponMsg, setCouponMsg] = useState({ type: '', text: '' });
+
+    // حساب الإجمالي المبدئي للسلة (كل منتج بسعره اللي جاي من المودال)
+    const rawSubtotal = cartItems.reduce((acc, item) => acc + item.pricing.finalPrice, 0);
+
+    // حساب خصم كوبون السلة
+    let cartDiscountAmount = 0;
+    if (appliedCartCoupon) {
+        if (appliedCartCoupon.discount_type === 'fixed') {
+            cartDiscountAmount = Number(appliedCartCoupon.discount_value);
+        } else if (appliedCartCoupon.discount_type === 'percent') {
+            cartDiscountAmount = rawSubtotal * (Number(appliedCartCoupon.discount_value) / 100);
+        }
+    }
+    if (cartDiscountAmount > rawSubtotal) cartDiscountAmount = rawSubtotal;
+
+    const cartSubtotal = Math.ceil(rawSubtotal - cartDiscountAmount);
 
     useEffect(() => {
         if (isOpen) {
@@ -41,12 +61,49 @@ const CartDrawer = ({ isOpen, onClose }) => {
 
     const grandTotal = cartSubtotal + finalShippingFee;
 
+    // تطبيق كوبون السلة
+    const handleApplyCartCoupon = async () => {
+        if (!cartCouponCode.trim()) return;
+        setCouponLoading(true);
+        setCouponMsg({ type: '', text: '' });
+        setAppliedCartCoupon(null);
+
+        try {
+            const { data: couponData, error } = await supabase.from('coupons').select('*').eq('code', cartCouponCode.trim()).single();
+
+            if (error || !couponData) throw new Error("Invalid coupon code");
+            if (!couponData.is_active) throw new Error("This coupon is inactive");
+
+            if (couponData.coupon_scope !== 'cart') {
+                throw new Error("This is an Item coupon. Please apply it to individual items before adding to cart.");
+            }
+
+            const now = new Date();
+            if (now < new Date(couponData.start_date)) throw new Error("Coupon hasn't started yet");
+            if (now > new Date(couponData.end_date)) throw new Error("Coupon has expired");
+            if (couponData.usage_limit && couponData.used_count >= couponData.usage_limit) {
+                throw new Error("This coupon has reached its usage limit.");
+            }
+
+            if (couponData.min_order_value && couponData.min_order_value > 0) {
+                if (rawSubtotal < couponData.min_order_value) {
+                    throw new Error(`Minimum cart value for this coupon is ${couponData.min_order_value} EGP`);
+                }
+            }
+
+            setAppliedCartCoupon(couponData);
+            setCouponMsg({ type: 'success', text: `Cart Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` });
+        } catch (err) {
+            setCouponMsg({ type: 'error', text: err.message || "Invalid Code" });
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
     const autoSelectGovernorate = (addressData) => {
         if (!addressData || shippingRatesList.length === 0) return;
-
         const fullText = (addressData.display_name || '').toLowerCase();
         let detectedGov = '';
-
         if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
             if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
                 const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
@@ -56,22 +113,17 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('borg'));
                 if (match) detectedGov = match.governorate;
             }
-
             if (!detectedGov) {
                 const centerMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('center') && r.governorate.toLowerCase().includes('alexandria'));
-                if (centerMatch) {
-                    detectedGov = centerMatch.governorate;
-                } else {
+                if (centerMatch) detectedGov = centerMatch.governorate;
+                else {
                     const fallbackMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('alexandria'));
                     if (fallbackMatch) detectedGov = fallbackMatch.governorate;
                 }
             }
         }
         else {
-            const foundRate = shippingRatesList.find(rate => {
-                const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
-                return fullText.includes(cleanName);
-            });
+            const foundRate = shippingRatesList.find(rate => fullText.includes(rate.governorate.toLowerCase().replace('governorate', '').trim()));
             if (foundRate) detectedGov = foundRate.governorate;
         }
 
@@ -117,12 +169,53 @@ const CartDrawer = ({ isOpen, onClose }) => {
         if (!userInfo.customerName.trim() || !userInfo.phone.trim()) {
             alert('Please enter Name and Phone'); return;
         }
-
         if (userInfo.deliveryMethod === 'shipping' && (!userInfo.governorate || !userInfo.address.trim())) {
             alert('Please complete shipping details'); return;
         }
 
         setIsSubmitting(true);
+
+        try {
+            const { data: userOrders } = await supabase.from('orders').select('items, applied_cart_coupon').eq('phone', userInfo.phone.trim());
+            let pastUses = {};
+            if (userOrders) {
+                userOrders.forEach(order => {
+                    const itemsArr = Array.isArray(order.items) ? order.items : (order.items ? [order.items] : []);
+                    itemsArr.forEach(i => {
+                        const code = i.appliedCoupon?.code;
+                        if (code) pastUses[code] = (pastUses[code] || 0) + 1;
+                    });
+                    if (order.applied_cart_coupon) {
+                        pastUses[order.applied_cart_coupon] = (pastUses[order.applied_cart_coupon] || 0) + 1;
+                    }
+                });
+            }
+
+            for (const item of cartItems) {
+                if (item.appliedCoupon) {
+                    const code = item.appliedCoupon.code;
+                    const limit = item.appliedCoupon.per_user_limit || 1;
+                    if ((pastUses[code] || 0) + 1 > limit) {
+                        alert(`Limit Reached! You can only use coupon [${code}] ${limit} time(s).`);
+                        setIsSubmitting(false);
+                        return;
+                    }
+                }
+            }
+
+            if (appliedCartCoupon) {
+                const code = appliedCartCoupon.code;
+                const limit = appliedCartCoupon.per_user_limit || 1;
+                if ((pastUses[code] || 0) + 1 > limit) {
+                    alert(`Limit Reached! You can only use Cart Coupon [${code}] ${limit} time(s).`);
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+        } catch (err) {
+            console.error("Error verifying coupons", err);
+        }
 
         const finalGovernorate = userInfo.deliveryMethod === 'pickup' ? "Alexandria (Pickup)" : userInfo.governorate;
         const finalAddress = userInfo.deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : userInfo.address;
@@ -136,7 +229,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 total_price: grandTotal,
                 shipping_fee: finalShippingFee,
                 status: 'pending',
-                items: cartItems
+                items: cartItems,
+                // 👇 بنحفظ كود كوبون السلة عشان الداش بورد
+                applied_cart_coupon: appliedCartCoupon ? appliedCartCoupon.code : null
             }]);
 
             if (orderError) throw orderError;
@@ -146,6 +241,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 if (item.appliedCoupon) {
                     await supabase.rpc('increment_coupon_usage', { coupon_code: item.appliedCoupon.code });
                 }
+            }
+            if (appliedCartCoupon) {
+                await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCartCoupon.code });
             }
 
             let message = `*NEW BATCH ORDER* 🛒🛒\n`;
@@ -173,19 +271,24 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 if (item.customText) message += `   • Text: "${item.customText}"\n`;
                 if (item.bgColor) message += `   • Color: ${item.bgColor}\n`;
                 if (item.notes) message += `   • Notes: ${item.notes}\n`;
-
-                // 👇👇👇 الصليحة هنا: لو في صورة هتتبعت كلينك صريح للواتساب 👇👇👇
                 if (item.refImage) message += `   • Ref Image: ${item.refImage}\n`;
-
                 const addOns = Object.values(item.selections);
-                if (addOns.length > 0) {
-                    message += `   • Add-ons: ${addOns.map(a => a.title).join(', ')}\n`;
-                }
+                if (addOns.length > 0) message += `   • Add-ons: ${addOns.map(a => a.title).join(', ')}\n`;
+
+                if (item.appliedCoupon) message += `   • Coupon: ${item.appliedCoupon.code}\n`;
+
                 message += `   • Item Total: ${item.pricing.finalPrice} EGP\n\n`;
             });
 
             message += `--------------------------------\n`;
             message += `*PAYMENT BREAKDOWN*\n`;
+            message += `Cart Items Total: ${rawSubtotal} EGP\n`;
+
+            // 👇 لو في كوبون ع السلة بنوضحه في الفاتورة
+            if (appliedCartCoupon) {
+                message += `Cart Discount (${appliedCartCoupon.code}): -${cartDiscountAmount} EGP\n`;
+            }
+
             message += `Subtotal: ${cartSubtotal} EGP\n`;
 
             if (userInfo.deliveryMethod === 'pickup') {
@@ -266,7 +369,33 @@ const CartDrawer = ({ isOpen, onClose }) => {
                                     ))}
                                 </div>
 
-                                <form onSubmit={handleCheckout} className="border-t border-gray-100 dark:border-gray-800 p-5 space-y-4 bg-gray-50 dark:bg-[#1e293b]">
+                                <form onSubmit={handleCheckout} className="border-t border-gray-100 dark:border-gray-800 p-5 space-y-4 bg-gray-50 dark:bg-[#1e293b] overflow-y-auto max-h-[50vh]">
+
+                                    {/* 👇 خانة كوبون السلة 👇 */}
+                                    <div className="bg-white dark:bg-[#0f172a] p-3 rounded-xl border border-gray-200 dark:border-gray-700">
+                                        <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                            <Tag size={14} className="text-primary" /> Cart Coupon
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={cartCouponCode}
+                                                onChange={(e) => setCartCouponCode(e.target.value.toUpperCase())}
+                                                placeholder="e.g. FREESHIP"
+                                                className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm uppercase dark:bg-[#1e293b] dark:text-white outline-none focus:border-primary"
+                                                disabled={!!appliedCartCoupon}
+                                            />
+                                            {appliedCartCoupon ? (
+                                                <button type="button" onClick={() => { setAppliedCartCoupon(null); setCartCouponCode(''); setCouponMsg({ type: '', text: '' }) }} className="bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold text-xs">Remove</button>
+                                            ) : (
+                                                <button type="button" onClick={handleApplyCartCoupon} disabled={couponLoading || !cartCouponCode} className="bg-gray-800 dark:bg-gray-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs disabled:opacity-50">
+                                                    {couponLoading ? <Loader2 className="animate-spin" size={14} /> : "Apply"}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {couponMsg.text && <p className={`text-[10px] mt-1 font-bold ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{couponMsg.text}</p>}
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-3">
                                         <input type="text" placeholder="Full Name" required value={userInfo.customerName} onChange={e => updateUserInfo({ customerName: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-[#0f172a] dark:text-white dark:border-gray-700 focus:border-primary outline-none" />
                                         <input type="tel" placeholder="Phone Number" required value={userInfo.phone} onChange={e => updateUserInfo({ phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm dark:bg-[#0f172a] dark:text-white dark:border-gray-700 focus:border-primary outline-none" />
@@ -317,33 +446,25 @@ const CartDrawer = ({ isOpen, onClose }) => {
                                                     • Shipping: <span className="font-bold">{estimatedDays}</span>
                                                 </p>
                                             )}
-                                            {userInfo.deliveryMethod === 'pickup' && (
-                                                <p className="text-[10px] text-blue-700 dark:text-blue-200 mt-0.5">
-                                                    • Shipping: <span className="font-bold">Pickup from Store</span>
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-purple-50 border border-purple-100 dark:bg-purple-900/10 dark:border-purple-800 rounded-lg p-2">
-                                            <div className="flex items-center gap-1.5 mb-1">
-                                                <Wallet size={14} className="text-purple-600 dark:text-purple-400" />
-                                                <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300 uppercase">Payment Policy</span>
-                                            </div>
-                                            <p className="text-[10px] text-purple-700 dark:text-purple-200 font-medium">50% Deposit via Wallet.</p>
-                                            <p className="text-[9px] text-red-500 font-bold mt-0.5 uppercase flex items-center gap-1">🚫 No Instapay</p>
                                         </div>
                                     </div>
 
                                     <div className="pt-2">
                                         <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-1">
-                                            <span>Subtotal ({cartItems.length} items)</span>
-                                            <span>{cartSubtotal} EGP</span>
+                                            <span>Items Total</span>
+                                            <span>{rawSubtotal} EGP</span>
                                         </div>
+                                        {appliedCartCoupon && (
+                                            <div className="flex justify-between text-sm text-green-600 font-bold mb-1">
+                                                <span>Cart Discount</span>
+                                                <span>-{cartDiscountAmount} EGP</span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
                                             <span>Shipping</span>
                                             <span>{finalShippingFee === 0 ? 'Free' : `+${finalShippingFee} EGP`}</span>
                                         </div>
-                                        <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                        <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-white mb-4 border-t pt-2">
                                             <span>Total</span>
                                             <span className="text-accent">{grandTotal} EGP</span>
                                         </div>

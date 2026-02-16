@@ -104,6 +104,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (error || !couponData) throw new Error("Invalid coupon code")
       if (!couponData.is_active) throw new Error("This coupon is inactive")
 
+      // 👇 التحقق الجديد: هل الكوبون ده للسلة ولا للمنتج؟
+      if (couponData.coupon_scope === 'cart') {
+        throw new Error("This is a Cart coupon. Please apply it at checkout in your shopping cart.");
+      }
+
       const now = new Date()
       if (now < new Date(couponData.start_date)) throw new Error("Coupon hasn't started yet")
       if (now > new Date(couponData.end_date)) throw new Error("Coupon has expired")
@@ -111,20 +116,17 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         throw new Error("This coupon has reached its usage limit.")
       }
 
-      // 👇 التحقق من الشروط الجديدة 👇
-
-      // 1. التحقق من الحد الأدنى للطلب
+      // 1. التحقق من الحد الأدنى للطلب (للمنتج ده)
       if (couponData.min_order_value && couponData.min_order_value > 0) {
         if (productTotalBeforeDiscount < couponData.min_order_value) {
-          throw new Error(`Minimum order value for this coupon is ${couponData.min_order_value} EGP`);
+          throw new Error(`Minimum value for this coupon is ${couponData.min_order_value} EGP`);
         }
       }
 
-      // 2. التحقق من فئة المنتج
-      if (couponData.category_target && couponData.category_target !== 'all') {
-        // نتأكد إن الفئة بتاعت المنتج مطابقة للفئة اللي الكوبون مسموح بيها
-        if (product.category.toLowerCase() !== couponData.category_target.toLowerCase()) {
-          throw new Error(`This coupon is only valid for ${couponData.category_target} items.`);
+      // 2. التحقق من الفئات 
+      if (couponData.target_categories && !couponData.target_categories.includes('all')) {
+        if (!couponData.target_categories.includes(product.category)) {
+          throw new Error(`This coupon is only valid for: ${couponData.target_categories.join(', ')}`);
         }
       }
 
