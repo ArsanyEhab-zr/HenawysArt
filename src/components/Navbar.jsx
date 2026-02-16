@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { MoreVertical, X, Moon, Sun, ShoppingCart } from 'lucide-react' // 👇 استبدلنا Menu بـ MoreVertical (3 نقط)
+Import { motion, AnimatePresence } from 'framer-motion'
+import { MoreVertical, X, Moon, Sun, ShoppingCart } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import LanguageToggle from './LanguageToggle'
@@ -74,26 +74,27 @@ const Navbar = () => {
           : 'bg-white/90 dark:bg-[#1e293b]/90 backdrop-blur-md shadow-sm dark:border-b dark:border-[#334155]/50'
           }`}
       >
-        <div className="w-full px-4 md:px-12">
-          <div className="flex items-center justify-between h-20">
+        <div className="w-full px-3 sm:px-4 md:px-12">
+          <div className="flex items-center justify-between h-20 gap-2">
 
-            {/* Logo Section */}
-            <Link to="/" className="flex-shrink-0">
+            {/* Logo Section - تم التعديل هنا عشان مياخدش مساحة زيادة */}
+            <Link to="/" className="flex-shrink min-w-0">
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 className="flex items-center gap-2 sm:gap-3"
               >
-                <div className="w-10 h-10 min-w-[40px] md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-gray-50 flex items-center justify-center">
+                <div className="w-9 h-9 min-w-[36px] md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-gray-50 flex items-center justify-center">
                   <img src="/logo.png" alt="Henawy's Art Logo" className="w-full h-full object-cover" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-script text-primary font-bold whitespace-nowrap">
+                {/* تم تصغير الخط قليلاً على الموبايل وإضافة truncate */}
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-script text-primary font-bold truncate">
                   Henawy's Art
                 </h1>
               </motion.div>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden md:flex items-center space-x-2 shrink-0">
               {navItems.map((item) => (
                 <Link key={item.path} to={item.path}>
                   <motion.div
@@ -127,37 +128,33 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* Mobile Menu Controls */}
-            {/* 👇 تحسين توزيع العناصر في الموبايل */}
-            <div className="md:hidden flex items-center gap-1.5">
+            {/* Mobile Menu Controls - تم إضافة shrink-0 وتثبيت مسافات الأزرار */}
+            <div className="md:hidden flex items-center gap-2 shrink-0">
 
               <LanguageToggle />
 
-              <button onClick={toggleTheme} className="p-1.5 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-[#e2e8f0] border border-gray-100 dark:border-gray-700">
+              <button onClick={toggleTheme} className="p-1.5 rounded-full flex items-center justify-center w-8 h-8 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-[#e2e8f0] border border-gray-100 dark:border-gray-700">
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
               <button
                 onClick={() => setIsCartOpen(true)}
-                className={`relative flex items-center gap-1 p-1.5 rounded-full transition-all border shadow-sm ${cartItems.length > 0 ? 'bg-primary text-white border-primary shadow-primary/30' : 'bg-white dark:bg-[#0f172a] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'}`}
+                className={`relative p-1.5 rounded-full transition-all border shadow-sm flex items-center justify-center w-8 h-8 ${cartItems.length > 0 ? 'bg-primary text-white border-primary shadow-primary/30' : 'bg-white dark:bg-[#0f172a] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'}`}
               >
                 <ShoppingCart size={18} />
+                {/* تم تغيير شكل الرقم عشان ميعرضش الزرار ويفضل دايرة */}
                 {cartItems.length > 0 && (
-                  <span className="text-[11px] font-bold px-1">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white dark:border-gray-800">
                     {cartItems.length}
                   </span>
                 )}
-                {cartItems.length > 0 && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                )}
               </button>
 
-              {/* 👇 زرار 3 نقط (Menu) - هيفضل دايمًا على الطرف */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`p-1.5 rounded-lg transition-all border ${isOpen ? 'bg-primary/10 border-primary text-primary' : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-[#e2e8f0] border-gray-100 dark:border-gray-700'}`}
+                className={`p-1.5 rounded-lg transition-all border flex items-center justify-center w-8 h-8 ${isOpen ? 'bg-primary/10 border-primary text-primary' : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-[#e2e8f0] border-gray-100 dark:border-gray-700'}`}
               >
-                {isOpen ? <X size={22} /> : <MoreVertical size={22} />}
+                {isOpen ? <X size={20} /> : <MoreVertical size={20} />}
               </button>
             </div>
 
@@ -198,3 +195,4 @@ const Navbar = () => {
 }
 
 export default Navbar
+
