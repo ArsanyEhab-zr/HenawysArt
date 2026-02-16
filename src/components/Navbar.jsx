@@ -69,13 +69,14 @@ const Navbar = () => {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
-        className={`fixed left-0 right-0 z-50 transition-all duration-300 notranslate ${isScrolled || isOpen
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 notranslate ${isScrolled || isOpen
           ? 'bg-white/95 dark:bg-[#1e293b]/95 backdrop-blur-lg shadow-lg border-b border-white/20 dark:border-[#334155]'
           : 'bg-white/90 dark:bg-[#1e293b]/90 backdrop-blur-md shadow-sm dark:border-b dark:border-[#334155]/50'
           }`}
       >
-        <div className="w-full px-4 md:px-12">
-          <div className="flex items-center justify-between h-20">
+        <div className="w-full px-3 sm:px-6 md:px-12">
+          {/* 👇 قللنا المسافات هنا عشان الموبايل */}
+          <div className="flex items-center justify-between h-20 gap-1">
 
             {/* Logo Section */}
             <Link to="/" className="flex-shrink-0">
@@ -83,6 +84,7 @@ const Navbar = () => {
                 whileHover={{ scale: 1.02 }}
                 className="flex items-center gap-2 sm:gap-3"
               >
+                {/* 👇 ثبات حجم اللوجو مهما حصل */}
                 <div className="w-10 h-10 min-w-[40px] md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-gray-50 flex items-center justify-center">
                   <img src="/logo.png" alt="Henawy's Art Logo" className="w-full h-full object-cover" />
                 </div>
@@ -119,6 +121,7 @@ const Navbar = () => {
                   {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
 
+                {/* Desktop Cart */}
                 <button onClick={() => setIsCartOpen(true)} className="relative flex items-center justify-center p-2.5 rounded-xl bg-gray-50 dark:bg-[#0f172a] hover:bg-primary/10 transition-colors text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 group">
                   <ShoppingCart size={20} className="group-hover:text-primary transition-colors" />
                   {cartItems.length > 0 && (
@@ -131,31 +134,36 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Menu Controls */}
-            {/* 👇 خلينا الـ flex-shrink عشان الزراير متتبططش، وصغرنا الـ gap */}
-            <div className="md:hidden flex items-center gap-1.5 flex-shrink-0">
+            {/* 👇 صغرنا الـ gap لـ 1.5 عشان الزراير كلها تظهر جنب بعض في الموبايل */}
+            <div className="md:hidden flex items-center gap-1.5 sm:gap-2">
 
-              <LanguageToggle />
+              <div className="scale-90 origin-right">
+                <LanguageToggle />
+              </div>
 
               <button onClick={toggleTheme} className="p-1.5 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-[#e2e8f0] border border-gray-100 dark:border-gray-700">
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
+              {/* 👇👇 كبسولة السلة الإبداعية للموبايل 👇👇 */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className={`relative flex items-center gap-1 p-1.5 rounded-full transition-all border shadow-sm ${cartItems.length > 0 ? 'bg-primary text-white border-primary shadow-primary/30' : 'bg-white dark:bg-[#0f172a] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'}`}
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all border shadow-sm ${cartItems.length > 0 ? 'bg-primary text-white border-primary shadow-primary/30' : 'bg-white dark:bg-[#0f172a] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'}`}
               >
-                <ShoppingCart size={18} />
+                <ShoppingCart size={16} />
                 {cartItems.length > 0 && (
-                  <span className="text-[11px] font-bold px-1">
+                  <span className="text-xs font-bold">
                     {cartItems.length}
                   </span>
                 )}
+                {/* دايرة حمرا صغيرة بتنور لو في منتجات */}
                 {cartItems.length > 0 && (
                   <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                 )}
               </button>
 
-              <button onClick={() => setIsOpen(!isOpen)} className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-[#e2e8f0] border border-gray-100 dark:border-gray-700 ml-1">
+              {/* زرار القائمة (Hamburger) */}
+              <button onClick={() => setIsOpen(!isOpen)} className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-[#e2e8f0] border border-gray-100 dark:border-gray-700">
                 {isOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
@@ -163,6 +171,7 @@ const Navbar = () => {
           </div>
         </div>
 
+        {/* Mobile Menu Dropdown */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -190,6 +199,7 @@ const Navbar = () => {
         </AnimatePresence>
       </motion.nav>
 
+      {/* استدعاء مكون السلة */}
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   )
