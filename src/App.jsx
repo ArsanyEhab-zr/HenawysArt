@@ -1,16 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
-// 👇 استيراد الـ CartProvider
+// استيراد الـ CartProvider
 import { CartProvider } from './context/CartContext'
 
-// Components العامة
+// Components
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 
-// Pages العامة (للزبون)
+// Pages
 import Home from './pages/Home'
 import Shop from './pages/Shop'
 import CategoryPage from './pages/CategoryPage'
@@ -18,12 +18,10 @@ import About from './pages/About'
 import Contact from './pages/Contact'
 import Developer from './pages/Developer'
 import Policies from './pages/Policies'
-
-// Pages الخاصة (للموظفين والداش بورد)
 import Login from './pages/Login'
 import RequireAuth from './components/RequireAuth'
 
-// Dashboard Pages
+// Dashboard
 import DashboardLayout from './dashboard/DashboardLayout'
 import DashboardHome from './dashboard/DashboardHome'
 import Orders from './dashboard/Orders'
@@ -32,75 +30,39 @@ import Products from './dashboard/Products'
 import Settings from './dashboard/Settings'
 import VisitorLogs from './dashboard/VisitorLogs'
 
-// مكون مساعد عشان نخفي الـ Navbar والـ Footer في الداش بورد
 const Layout = ({ children }) => {
   const location = useLocation()
   const hideHeaderFooter = location.pathname.startsWith('/dashboard') || location.pathname === '/login'
 
-  const [isTranslated, setIsTranslated] = useState(false)
-
-  // 👇 كود المراقبة الذكي للترجمة والـ RTL
+  // 👇 كود حماية ذكي بيظبط الناف بار بس لو شريط جوجل شغال (بيشوف لو جوجل زق الـ body لتحت)
   useEffect(() => {
-    const checkTranslation = () => {
-      const htmlLang = document.documentElement.lang;
-      const hasGoogleFrame = document.querySelector('.skiptranslate');
-      const isRTL = document.documentElement.dir === 'rtl' || htmlLang === 'ar';
+    const fixGoogleTranslateBar = () => {
+      const bodyTop = document.body.style.top;
+      const nav = document.getElementById('main-navbar');
 
-      // 1. حماية من الخروج بره الشاشة يمين وشمال (RTL Fix)
-      document.body.style.overflowX = 'hidden';
-      document.documentElement.style.overflowX = 'hidden';
-
-      // 2. تحديث الستيت لو في ترجمة جوجل شغالة
-      if (htmlLang === 'ar' || hasGoogleFrame || isRTL) {
-        setIsTranslated(true);
-      } else {
-        setIsTranslated(false);
+      if (nav) {
+        if (bodyTop && bodyTop !== '0px') {
+          // لو جوجل زق الصفحة، هنزق الناف بار معاه
+          nav.style.top = bodyTop;
+        } else {
+          // لو إنجليزي أو مفيش شريط، يرجع يلزق فوق
+          nav.style.top = '0px';
+        }
       }
     };
 
-    // تشغيل أول مرة
-    checkTranslation();
+    const observer = new MutationObserver(fixGoogleTranslateBar);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
 
-    // تشغيل المراقب لأي تغيير يحصل في الـ HTML
-    const observer = new MutationObserver(checkTranslation);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'class', 'dir'] });
-    observer.observe(document.body, { childList: true });
-
-    return () => {
-      observer.disconnect();
-      document.body.style.overflowX = 'auto';
-      document.documentElement.style.overflowX = 'auto';
-    };
+    return () => observer.disconnect();
   }, []);
 
   return (
-    // 👇 التعديل الهام هنا: `w-full overflow-x-hidden` بتمنع أي مساحة فاضية تظهر على اليمين
-    <div className={`min-h-screen flex flex-col w-full overflow-x-hidden relative transition-all duration-300 ${isTranslated && !hideHeaderFooter ? 'pt-10' : ''}`}>
-
-      {/* الستايل ده بيعمل الآتي:
-        1. لو جوجل ترجمة شغال: بينزل الـ Navbar 40 بكسل عشان الشريط اللي فوق.
-        2. بيدي للمحتوى مسافة من فوق عشان مايخبطش في הـ Navbar.
-      */}
-      <style>
-        {`
-          ${isTranslated && !hideHeaderFooter ? `
-            nav.fixed { top: 40px !important; }
-            .content-wrapper { padding-top: 120px !important; } 
-          ` : `
-            .content-wrapper { padding-top: 80px !important; }
-          `}
-          
-          /* تأكيد أخير لمنع الـ Scroll العرضي */
-          html, body {
-            max-width: 100vw;
-            overflow-x: hidden;
-          }
-        `}
-      </style>
-
+    // 👇 منع الـ Scroll العرضي (عشان الصفحة متتزقش يمين في العربي)
+    <div className="min-h-screen flex flex-col w-full overflow-x-hidden relative">
       {!hideHeaderFooter && <Navbar />}
 
-      <div className={`flex-grow w-full max-w-full ${!hideHeaderFooter ? 'content-wrapper transition-all duration-300' : ''}`}>
+      <div className="flex-grow w-full">
         {children}
       </div>
 
@@ -111,53 +73,24 @@ const Layout = ({ children }) => {
 
 function App() {
 
-  // 👇👇👇 كود التتبع المعدل (Robust Tracker) 👇👇👇
   useEffect(() => {
     const recordVisit = async () => {
-      console.log("🚀 Tracking started...") // تأكيد إن الكود بدأ
-
-      // 1. الفلتر الأول: الجلسة المسجلة
       const hasVisited = sessionStorage.getItem('visited_session')
-      if (hasVisited) {
-        console.log("ℹ️ Session already recorded.")
-        return
-      }
+      if (hasVisited) return
 
-      // 🛑 2. الفلتر الثاني: كشف البوتات
       const userAgent = navigator.userAgent.toLowerCase()
-      const isBot =
-        userAgent.includes('bot') ||
-        userAgent.includes('crawler') ||
-        userAgent.includes('spider') ||
-        userAgent.includes('headless') ||
-        navigator.webdriver
+      const isBot = userAgent.includes('bot') || navigator.webdriver
+      if (isBot) return
 
-      if (isBot) {
-        console.log("🤖 Bot detected! Visit ignored.")
-        return
-      }
-
-      // 3. محاولة جلب الموقع (بطريقة آمنة مابتوقفش الكود)
       let locationData = {}
       try {
         const res = await fetch('https://ipapi.co/json/')
-        if (res.ok) {
-          locationData = await res.json()
-        } else {
-          console.warn("⚠️ Location API failed, recording as Unknown.")
-        }
-      } catch (err) {
-        console.warn("⚠️ Network/AdBlock Error fetching location, continuing...", err)
-      }
+        if (res.ok) locationData = await res.json()
+      } catch (err) { }
 
-      // 4. فلتر الداتا سنتر (لو عرفنا نجيب البيانات)
       const org = (locationData.org || '').toLowerCase()
-      if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) {
-        console.log("🏢 Data Center traffic detected! Visit ignored.")
-        return
-      }
+      if (org.includes('amazon') || org.includes('google cloud') || org.includes('microsoft')) return
 
-      // 5. تجهيز البيانات
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       let referrer = document.referrer || "Direct / Typed URL";
       if (referrer.includes("facebook")) referrer = "Facebook";
@@ -166,7 +99,6 @@ function App() {
 
       const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-      // 6. الإرسال للداتابيز
       const { data, error } = await supabase.from('site_visits').insert([{
         country: locationData.country_name || 'Unknown',
         city: locationData.city || 'Unknown',
@@ -176,20 +108,11 @@ function App() {
         referrer: referrer,
         screen_res: screenRes,
         browser_lang: navigator.language
-      }])
-        .select()
-        .single()
+      }]).select().single()
 
-      if (error) {
-        console.error("❌ Supabase Insert Error:", error.message) // لو فيه مشكلة هنا هتظهرلك في الكونسول
-      } else {
-        console.log("✅ Success! Visit Recorded ID:", data.id)
-
-        // حفظنا الـ ID عشان رحلة العميل
-        if (data) {
-          sessionStorage.setItem('current_visit_id', data.id)
-          sessionStorage.setItem('visited_session', 'true')
-        }
+      if (!error && data) {
+        sessionStorage.setItem('current_visit_id', data.id)
+        sessionStorage.setItem('visited_session', 'true')
       }
     }
 
@@ -197,16 +120,11 @@ function App() {
   }, [])
 
   return (
-    // 👇 لفينا الموقع كله بـ CartProvider
     <CartProvider>
       <Router>
         <Toaster position="top-right" />
-
         <Layout>
           <Routes>
-            {/* ========================================= */}
-            {/* 🌍 المسارات العامة */}
-            {/* ========================================= */}
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/:category" element={<CategoryPage />} />
@@ -214,44 +132,16 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/developer" element={<Developer />} />
             <Route path="/policies" element={<Policies />} />
-
-            {/* ========================================= */}
-            {/* 🔐 تسجيل الدخول */}
-            {/* ========================================= */}
             <Route path="/login" element={<Login />} />
 
-            {/* ========================================= */}
-            {/* ⚙️ الداش بورد */}
-            {/* ========================================= */}
-            <Route path="/dashboard" element={
-              <RequireAuth>
-                <DashboardLayout />
-              </RequireAuth>
-            }>
+            <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
               <Route index element={<DashboardHome />} />
               <Route path="orders" element={<Orders />} />
               <Route path="products" element={<Products />} />
-
-              {/* صفحة سجل الزوار */}
-              <Route path="visitors" element={
-                <RequireAuth allowedRoles={['admin']}>
-                  <VisitorLogs />
-                </RequireAuth>
-              } />
-
-              <Route path="users" element={
-                <RequireAuth allowedRoles={['admin']}>
-                  <Users />
-                </RequireAuth>
-              } />
-
-              <Route path="settings" element={
-                <RequireAuth allowedRoles={['admin']}>
-                  <Settings />
-                </RequireAuth>
-              } />
+              <Route path="visitors" element={<RequireAuth allowedRoles={['admin']}><VisitorLogs /></RequireAuth>} />
+              <Route path="users" element={<RequireAuth allowedRoles={['admin']}><Users /></RequireAuth>} />
+              <Route path="settings" element={<RequireAuth allowedRoles={['admin']}><Settings /></RequireAuth>} />
             </Route>
-
           </Routes>
         </Layout>
       </Router>
