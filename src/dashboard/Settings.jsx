@@ -2,28 +2,76 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
     Truck, Tag, Save, Plus, Trash2, Calendar,
-    Percent, DollarSign, CheckCircle, XCircle, Loader2, AlertCircle, Users
+    Percent, DollarSign, CheckCircle, XCircle, Loader2, AlertCircle, Users, Layers
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
+// المكون بتاع الشحن زي ما هو
+const ShippingRateItem = ({ rate, handleUpdateShipping }) => {
+    const [localFee, setLocalFee] = useState(rate.fee)
+    const [localDays, setLocalDays] = useState(rate.estimated_days || '10-14 days')
+
+    return (
+        <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="font-bold text-gray-800">{rate.governorate}</span>
+            <div className="flex flex-col gap-2 mt-1">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-bold">Fee (EGP):</span>
+                    <input
+                        type="number"
+                        value={localFee}
+                        onChange={e => setLocalFee(e.target.value)}
+                        onBlur={(e) => {
+                            if (Number(e.target.value) !== rate.fee || localDays !== rate.estimated_days) {
+                                handleUpdateShipping(rate.id, e.target.value, localDays)
+                            }
+                        }}
+                        className="w-20 px-2 py-1 border rounded text-center font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-bold">Days:</span>
+                    <input
+                        type="text"
+                        value={localDays}
+                        onChange={e => setLocalDays(e.target.value)}
+                        onBlur={(e) => {
+                            if (Number(localFee) !== rate.fee || e.target.value !== rate.estimated_days) {
+                                handleUpdateShipping(rate.id, localFee, e.target.value)
+                            }
+                        }}
+                        placeholder="e.g. 3-5 days"
+                        className="w-24 px-2 py-1 border rounded text-center text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                </div>
+            </div>
+        </div>
+    )
+}
+
 const Settings = () => {
-    const [activeTab, setActiveTab] = useState('shipping') // shipping | coupons
+    const [activeTab, setActiveTab] = useState('shipping')
     const [loading, setLoading] = useState(true)
 
     // Data States
     const [shippingRates, setShippingRates] = useState([])
     const [coupons, setCoupons] = useState([])
+    // 👇 ستيت جديدة لجلب فئات المنتجات المتاحة في المتجر عشان نختار منها
+    const [availableCategories, setAvailableCategories] = useState([])
 
     // Modal States (For Coupons)
     const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
     const [couponForm, setCouponForm] = useState({
         code: '',
         discount_value: '',
-        discount_type: 'percent', // or 'fixed'
+        discount_type: 'percent',
         start_date: '',
         end_date: '',
         is_active: true,
-        usage_limit: 100 // 👇 القيمة الافتراضية للحد الأقصى
+        usage_limit: 100,
+        // 👇 الإضافات الجديدة
+        min_order_value: 0,
+        category_target: 'all'
     })
 
     useEffect(() => {
@@ -51,6 +99,15 @@ const Settings = () => {
             if (couponsError) throw couponsError
             setCoupons(couponsData)
 
+            // 3. Get Unique Categories from Products
+            const { data: productsData, error: productsError } = await supabase
+                .from('products')
+                .select('category')
+
+            if (productsError) throw productsError
+            const uniqueCats = [...new Set(productsData.map(item => item.category).filter(Boolean))]
+            setAvailableCategories(uniqueCats)
+
         } catch (error) {
             toast.error("Failed to load settings")
             console.error(error)
@@ -59,8 +116,6 @@ const Settings = () => {
         }
     }
 
-    // ==================== SHIPPING LOGIC ====================
-    // 👇 تعديل لاستقبال المدة الجديدة
     const handleUpdateShipping = async (id, newFee, newDays) => {
         try {
             const { error } = await supabase
@@ -71,7 +126,6 @@ const Settings = () => {
             if (error) throw error
             toast.success("Shipping rate updated")
 
-            // Update local state
             setShippingRates(prev => prev.map(item =>
                 item.id === id ? { ...item, fee: newFee, estimated_days: newDays } : item
             ))
@@ -80,7 +134,6 @@ const Settings = () => {
         }
     }
 
-    // ==================== COUPON LOGIC ====================
     const handleSaveCoupon = async (e) => {
         e.preventDefault()
         if (!couponForm.code || !couponForm.discount_value) return toast.error("Please fill required fields")
@@ -93,8 +146,11 @@ const Settings = () => {
                 start_date: couponForm.start_date || new Date().toISOString(),
                 end_date: couponForm.end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
                 is_active: couponForm.is_active,
-                usage_limit: Number(couponForm.usage_limit) || 100, // 👇 حفظ حد الاستخدام
-                used_count: 0 // البداية دايماً صفر
+                usage_limit: Number(couponForm.usage_limit) || 100,
+                used_count: 0,
+                // 👇 حفظ الإضافات الجديدة
+                min_order_value: Number(couponForm.min_order_value) || 0,
+                category_target: couponForm.category_target || 'all'
             }
 
             const { data, error } = await supabase
@@ -109,13 +165,9 @@ const Settings = () => {
             setIsCouponModalOpen(false)
             // Reset Form
             setCouponForm({
-                code: '',
-                discount_value: '',
-                discount_type: 'percent',
-                start_date: '',
-                end_date: '',
-                is_active: true,
-                usage_limit: 100
+                code: '', discount_value: '', discount_type: 'percent',
+                start_date: '', end_date: '', is_active: true, usage_limit: 100,
+                min_order_value: 0, category_target: 'all'
             })
         } catch (error) {
             console.error(error)
@@ -185,48 +237,13 @@ const Settings = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-                        {shippingRates.map((rate) => {
-                            // 👇 ضفنا states داخلية عشان التعديل يبقى أسهل للمستخدم
-                            const [localFee, setLocalFee] = useState(rate.fee)
-                            const [localDays, setLocalDays] = useState(rate.estimated_days || '10-14 days')
-
-                            return (
-                                <div key={rate.id} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                    <span className="font-bold text-gray-800">{rate.governorate}</span>
-                                    <div className="flex flex-col gap-2 mt-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-500 font-bold">Fee (EGP):</span>
-                                            <input
-                                                type="number"
-                                                value={localFee}
-                                                onChange={e => setLocalFee(e.target.value)}
-                                                onBlur={(e) => {
-                                                    if (Number(e.target.value) !== rate.fee || localDays !== rate.estimated_days) {
-                                                        handleUpdateShipping(rate.id, e.target.value, localDays)
-                                                    }
-                                                }}
-                                                className="w-20 px-2 py-1 border rounded text-center font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-500 font-bold">Days:</span>
-                                            <input
-                                                type="text"
-                                                value={localDays}
-                                                onChange={e => setLocalDays(e.target.value)}
-                                                onBlur={(e) => {
-                                                    if (Number(localFee) !== rate.fee || e.target.value !== rate.estimated_days) {
-                                                        handleUpdateShipping(rate.id, localFee, e.target.value)
-                                                    }
-                                                }}
-                                                placeholder="e.g. 3-5 days"
-                                                className="w-24 px-2 py-1 border rounded text-center text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
+                        {shippingRates.map((rate) => (
+                            <ShippingRateItem
+                                key={rate.id}
+                                rate={rate}
+                                handleUpdateShipping={handleUpdateShipping}
+                            />
+                        ))}
                     </div>
                     {shippingRates.length === 0 && <div className="p-6 text-center text-gray-500">No rates found. Please run SQL setup.</div>}
                 </div>
@@ -250,9 +267,9 @@ const Settings = () => {
                                 <thead className="bg-gray-50 text-gray-500 text-sm">
                                     <tr>
                                         <th className="p-4">Code</th>
-                                        <th className="p-4">Discount</th>
+                                        <th className="p-4">Rules</th> {/* 👇 تعديل العنوان عشان يشمل الشروط */}
                                         <th className="p-4">Status</th>
-                                        <th className="p-4">Usage (Used / Limit)</th> {/* 👇 تعديل العنوان */}
+                                        <th className="p-4">Usage</th>
                                         <th className="p-4">Expires</th>
                                         <th className="p-4 text-right">Actions</th>
                                     </tr>
@@ -262,9 +279,14 @@ const Settings = () => {
                                         <tr key={coupon.id} className="hover:bg-gray-50">
                                             <td className="p-4 font-bold text-gray-800">{coupon.code}</td>
                                             <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${coupon.discount_type === 'percent' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
-                                                    {coupon.discount_value} {coupon.discount_type === 'percent' ? '%' : 'EGP'}
-                                                </span>
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${coupon.discount_type === 'percent' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                                                        {coupon.discount_value} {coupon.discount_type === 'percent' ? '%' : 'EGP'}
+                                                    </span>
+                                                    {/* 👇 عرض الشروط تحت قيمة الكوبون */}
+                                                    {coupon.min_order_value > 0 && <span className="text-[10px] text-gray-500 border rounded px-1.5 bg-white">Min: {coupon.min_order_value} EGP</span>}
+                                                    {coupon.category_target !== 'all' && <span className="text-[10px] text-gray-500 border rounded px-1.5 bg-white">For: {coupon.category_target}</span>}
+                                                </div>
                                             </td>
                                             <td className="p-4">
                                                 <button
@@ -276,7 +298,6 @@ const Settings = () => {
                                                 </button>
                                             </td>
                                             <td className="p-4 text-sm text-gray-600">
-                                                {/* 👇 عرض العداد / الحد الأقصى */}
                                                 <span className={`font-bold ${coupon.used_count >= coupon.usage_limit ? 'text-red-500' : 'text-gray-700'}`}>
                                                     {coupon.used_count || 0}
                                                 </span>
@@ -307,9 +328,9 @@ const Settings = () => {
             {/* ================= MODAL: ADD COUPON ================= */}
             {isCouponModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
                         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800">Create New Coupon</h3>
+                            <h3 className="font-bold text-gray-800">Create Advanced Coupon</h3>
                             <button onClick={() => setIsCouponModalOpen(false)}><XCircle className="text-gray-400 hover:text-gray-600" /></button>
                         </div>
 
@@ -351,7 +372,42 @@ const Settings = () => {
                                 </div>
                             </div>
 
-                            {/* 👇 خانة الحد الأقصى للاستخدام (الجديدة) */}
+                            <hr className="border-gray-100" />
+
+                            {/* 👇 قيود الكوبون (الحد الأدنى والفئة) */}
+                            <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <div>
+                                    <label className="flex items-center gap-1 text-sm font-medium text-blue-900 mb-1">
+                                        <DollarSign size={14} /> Min. Order Value
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={couponForm.min_order_value}
+                                        onChange={e => setCouponForm({ ...couponForm, min_order_value: e.target.value })}
+                                        className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm"
+                                        placeholder="0 for no limit"
+                                        min="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="flex items-center gap-1 text-sm font-medium text-blue-900 mb-1">
+                                        <Layers size={14} /> Category Target
+                                    </label>
+                                    <select
+                                        value={couponForm.category_target}
+                                        onChange={e => setCouponForm({ ...couponForm, category_target: e.target.value })}
+                                        className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white"
+                                    >
+                                        <option value="all">All Categories</option>
+                                        {availableCategories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
                                     <Users size={16} /> Usage Limit (Max Customers)
@@ -364,7 +420,6 @@ const Settings = () => {
                                     placeholder="e.g. 100"
                                     min="1"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">Leave blank or high number for unlimited.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -392,7 +447,7 @@ const Settings = () => {
                                 type="submit"
                                 className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-dark transition-all mt-4"
                             >
-                                Create Coupon
+                                Save Advanced Coupon
                             </button>
                         </form>
                     </div>

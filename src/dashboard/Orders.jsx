@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import {
-    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock, RefreshCw, ImagePlus // ضفت ImagePlus
+    Search, Filter, Eye, ChevronDown, Loader2, XCircle, Trash2, Phone, MapPin, DollarSign, Calendar, PackageCheck, Clock, RefreshCw, ImagePlus
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -210,7 +210,6 @@ const Orders = () => {
                                     const pId = isNewFormat ? firstItem.product?.id : firstItem.productId;
                                     const pName = isNewFormat ? firstItem.product?.title : firstItem.productName;
 
-                                    // 👇👇 التعديل 1: صورة العميل المرفوعة دايماً بتكسب 👇👇
                                     const displayImg = firstItem.refImage || (isNewFormat ? firstItem.product?.images?.[0] : null);
 
                                     const categoryName = productsMap[pId]?.category || 'N/A';
@@ -357,27 +356,33 @@ const Orders = () => {
                                                 const pName = isNewFormat ? item.product?.title : item.productName;
                                                 const refImg = item.refImage;
 
-                                                // 👇👇 التعديل 2: الأولوية لصورة العميل المرفوعة 👇👇
                                                 const displayImg = refImg || (isNewFormat ? item.product?.images?.[0] : null);
 
                                                 const catName = productsMap[pId]?.category || 'N/A';
 
-                                                const basePrice = isNewFormat ? item.pricing?.basePrice : (productsMap[pId]?.basePrice || 0);
-                                                let finalPrice = isNewFormat ? item.pricing?.finalPrice : 0;
-                                                let hasChanges = false;
+                                                // 👇👇 التعديل: السعر الأساسي للمنتج والسعر النهائي بعد الإضافات أو الخصم 👇👇
+                                                const basePrice = isNewFormat ? Number(item.product?.price || 0) : Number(productsMap[pId]?.basePrice || 0);
+                                                let finalPrice = isNewFormat ? Number(item.pricing?.finalPrice || 0) : 0;
 
                                                 if (!isNewFormat) {
                                                     let totalOld = basePrice;
                                                     if (item.addons) {
+                                                        const coupleAddon = Object.values(item.addons).find(a => a.operation_type === 'percent_double_discount');
+                                                        if (coupleAddon) {
+                                                            const doublePrice = totalOld * 2;
+                                                            totalOld = doublePrice - (doublePrice * (Number(coupleAddon.value) / 100));
+                                                        }
                                                         Object.values(item.addons).forEach(a => {
+                                                            if (a.operation_type === 'percent_double_discount') return;
                                                             if (a.operation_type === 'fixed') totalOld += Number(a.value);
+                                                            if (a.operation_type === 'percent_add') totalOld += basePrice * (Number(a.value) / 100);
                                                         });
                                                     }
                                                     finalPrice = totalOld;
-                                                    hasChanges = finalPrice !== basePrice;
-                                                } else {
-                                                    hasChanges = item.pricing?.basePrice !== item.pricing?.finalPrice || Object.keys(item.selections || {}).length > 0;
                                                 }
+
+                                                // مقارنة للتأكد لو في اختلاف بين الأساسي والنهائي
+                                                const hasChanges = basePrice > 0 && finalPrice !== basePrice;
 
                                                 return (
                                                     <div key={idx} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
@@ -394,13 +399,13 @@ const Orders = () => {
                                                                 </div>
 
                                                                 <div className="text-right">
-                                                                    {(hasChanges && basePrice) ? (
+                                                                    {hasChanges ? (
                                                                         <div className="flex flex-col items-end">
                                                                             <span className="text-sm font-bold text-primary">{finalPrice} EGP</span>
                                                                             <span className="text-[10px] text-gray-400 line-through">{basePrice} EGP</span>
                                                                         </div>
                                                                     ) : (
-                                                                        <span className="text-sm font-bold text-primary">{finalPrice ? `${finalPrice} EGP` : 'Included'}</span>
+                                                                        <span className="text-sm font-bold text-primary">{finalPrice > 0 ? `${finalPrice} EGP` : 'Included'}</span>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -425,7 +430,6 @@ const Orders = () => {
                                                                 </p>
                                                             )}
 
-                                                            {/* 👇👇 التعديل 3: زرار يفتح صورة العميل لوحدها عشان تشوفها بوضوح 👇👇 */}
                                                             {item.refImage && (
                                                                 <a href={item.refImage} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[11px] bg-blue-100 text-blue-700 px-2 py-1.5 rounded-md border border-blue-200 hover:bg-blue-200 transition-colors font-bold w-fit">
                                                                     <ImagePlus size={14} /> Open Customer Image

@@ -111,6 +111,23 @@ const OrderModal = ({ isOpen, onClose, product }) => {
         throw new Error("This coupon has reached its usage limit.")
       }
 
+      // 👇 التحقق من الشروط الجديدة 👇
+
+      // 1. التحقق من الحد الأدنى للطلب
+      if (couponData.min_order_value && couponData.min_order_value > 0) {
+        if (productTotalBeforeDiscount < couponData.min_order_value) {
+          throw new Error(`Minimum order value for this coupon is ${couponData.min_order_value} EGP`);
+        }
+      }
+
+      // 2. التحقق من فئة المنتج
+      if (couponData.category_target && couponData.category_target !== 'all') {
+        // نتأكد إن الفئة بتاعت المنتج مطابقة للفئة اللي الكوبون مسموح بيها
+        if (product.category.toLowerCase() !== couponData.category_target.toLowerCase()) {
+          throw new Error(`This coupon is only valid for ${couponData.category_target} items.`);
+        }
+      }
+
       setAppliedCoupon(couponData)
       setCouponMsg({ type: 'success', text: `Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` })
     } catch (err) {
