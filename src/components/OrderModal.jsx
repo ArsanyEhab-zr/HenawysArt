@@ -71,10 +71,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // 👇 تعديل حساب الشحن والمدة:
+  // 👇 تعديل حساب الشحن: جلب السعر والمدة
   const selectedShippingData = shippingRatesList.find(r => r.governorate === governorate);
   const baseShippingFee = selectedShippingData?.fee || 0;
-  const estimatedDays = selectedShippingData?.estimated_days || '10-14 days';
+  // 👇 جلب مدة الشحن المتغيرة (أو فارغة لو لسه مختارش)
+  const estimatedDays = selectedShippingData?.estimated_days || ''; 
   const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee;
 
   useEffect(() => {
@@ -403,15 +404,13 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     message += `> Name: ${customerName}\n`;
     message += `> Phone: ${phone}\n`;
 
-    // 👇 تغيير الرسالة حسب طريقة الاستلام مع إضافة المدة
+    // 👇 تغيير الرسالة حسب طريقة الاستلام
     if (deliveryMethod === 'pickup') {
       message += `> Type: *PICKUP @ HENAWY'S ART* 🏠\n`;
-      message += `> Ready in: ${estimatedDays}\n`;
     } else {
       message += `> Type: Home Delivery 🚚\n`;
       message += `> City: ${governorate}\n`;
       message += `> Address: ${address}\n`;
-      message += `> Delivery Time: ${estimatedDays}\n`; // 👇 المدة هنا
       if (locationLink) message += `> GPS: ${locationLink}\n`;
     }
     message += `\n`;
@@ -454,7 +453,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (deliveryMethod === 'pickup') {
         message += `Shipping: 0 EGP (Pickup)\n`;
       } else {
-        message += `Shipping Fee: ${shippingFee} EGP\n`;
+        // 👇 ضفنا وقت التوصيل في الرسالة للواتساب لو في شحن
+        message += `Shipping Fee: ${shippingFee} EGP ${estimatedDays ? `(${estimatedDays})` : ''}\n`;
       }
 
       message += `========================\n`;
@@ -463,7 +463,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     }
 
     message += `\n*IMPORTANT NOTES*\n`;
-    message += `1. Delivery: ${estimatedDays}.\n`; // 👇 المدة في الملاحظات
+    message += `1. Processing Time: 10-14 Working Days.\n`; // خليناها Processing Time
     message += `2. Payment: 50% Deposit required via Wallet.\n`;
 
     if (uploadedImageUrl) {
@@ -517,8 +517,10 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     {deliveryMethod === 'pickup' ? (
                       <span className="flex items-center bg-green-500/20 px-2 py-0.5 rounded text-white"><Store size={10} className="mr-1" /> Pickup: Free</span>
                     ) : (
-                      // 👇 عرضنا المدة جنب سعر الشحن
-                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded"><Truck size={10} className="mr-1" /> Ship: {shippingFee} EGP ({estimatedDays})</span>
+                      // 👇 عرض مدة الشحن جنب السعر
+                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded">
+                        <Truck size={10} className="mr-1" /> Ship: {shippingFee} EGP {estimatedDays && `(${estimatedDays})`}
+                      </span>
                     )}
                   </div>
                 )}
@@ -663,8 +665,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <div
                       onClick={() => setDeliveryMethod('shipping')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'shipping'
-                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Truck size={18} /> Home Delivery
@@ -672,8 +674,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                     <div
                       onClick={() => setDeliveryMethod('pickup')}
                       className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'pickup'
-                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                          ? 'border-primary bg-primary/5 text-primary-dark font-bold'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                     >
                       <Store size={18} /> Pickup (Henawy's)
@@ -731,14 +733,14 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               {/* Info Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 👇 Delivery Card (متغير حسب المحافظة) */}
+                {/* 👇 حافظت على جملة تجهيز الأوردر زي ما هي */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertCircle size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-blue-800 uppercase">Delivery Time</span>
+                    <span className="text-xs font-bold text-blue-800 uppercase">Preparation Time</span>
                   </div>
                   <p className="text-xs text-blue-700 leading-relaxed">
-                    Ready in <span className="font-bold">{estimatedDays}</span>.
+                    Order takes <span className="font-bold">10 to 14 days</span> to be ready.
                   </p>
                 </div>
 
