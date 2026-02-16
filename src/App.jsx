@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
 // 👇 استيراد الـ CartProvider
@@ -37,10 +37,73 @@ const Layout = ({ children }) => {
   const location = useLocation()
   const hideHeaderFooter = location.pathname.startsWith('/dashboard') || location.pathname === '/login'
 
+  const [isTranslated, setIsTranslated] = useState(false)
+
+  // 👇 كود المراقبة الذكي للترجمة والـ RTL
+  useEffect(() => {
+    const checkTranslation = () => {
+      const htmlLang = document.documentElement.lang;
+      const hasGoogleFrame = document.querySelector('.skiptranslate');
+      const isRTL = document.documentElement.dir === 'rtl' || htmlLang === 'ar';
+
+      // 1. حماية من الخروج بره الشاشة يمين وشمال (RTL Fix)
+      document.body.style.overflowX = 'hidden';
+      document.documentElement.style.overflowX = 'hidden';
+
+      // 2. تحديث الستيت لو في ترجمة جوجل شغالة
+      if (htmlLang === 'ar' || hasGoogleFrame || isRTL) {
+        setIsTranslated(true);
+      } else {
+        setIsTranslated(false);
+      }
+    };
+
+    // تشغيل أول مرة
+    checkTranslation();
+
+    // تشغيل المراقب لأي تغيير يحصل في الـ HTML
+    const observer = new MutationObserver(checkTranslation);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'class', 'dir'] });
+    observer.observe(document.body, { childList: true });
+
+    return () => {
+      observer.disconnect();
+      document.body.style.overflowX = 'auto';
+      document.documentElement.style.overflowX = 'auto';
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col">
+    // 👇 التعديل الهام هنا: `w-full overflow-x-hidden` بتمنع أي مساحة فاضية تظهر على اليمين
+    <div className={`min-h-screen flex flex-col w-full overflow-x-hidden relative transition-all duration-300 ${isTranslated && !hideHeaderFooter ? 'pt-10' : ''}`}>
+
+      {/* الستايل ده بيعمل الآتي:
+        1. لو جوجل ترجمة شغال: بينزل الـ Navbar 40 بكسل عشان الشريط اللي فوق.
+        2. بيدي للمحتوى مسافة من فوق عشان مايخبطش في הـ Navbar.
+      */}
+      <style>
+        {`
+          ${isTranslated && !hideHeaderFooter ? `
+            nav.fixed { top: 40px !important; }
+            .content-wrapper { padding-top: 120px !important; } 
+          ` : `
+            .content-wrapper { padding-top: 80px !important; }
+          `}
+          
+          /* تأكيد أخير لمنع الـ Scroll العرضي */
+          html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+          }
+        `}
+      </style>
+
       {!hideHeaderFooter && <Navbar />}
-      <div className="flex-grow">{children}</div>
+
+      <div className={`flex-grow w-full max-w-full ${!hideHeaderFooter ? 'content-wrapper transition-all duration-300' : ''}`}>
+        {children}
+      </div>
+
       {!hideHeaderFooter && <Footer />}
     </div>
   )
