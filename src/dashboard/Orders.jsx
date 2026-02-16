@@ -13,7 +13,7 @@ const Orders = () => {
     const [selectedCategory, setSelectedCategory] = useState('All')
     const [selectedOrder, setSelectedOrder] = useState(null)
 
-    // 👇 1. ضفنا state جديدة عشان نخزن فيها خريطة المنتجات (ID -> Category)
+    // 👇 خريطة المنتجات
     const [productsMap, setProductsMap] = useState({})
 
     const STATUS_OPTIONS = [
@@ -35,15 +35,12 @@ const Orders = () => {
 
     const fetchCategories = async () => {
         try {
-            // 👇 2. عدلنا هنا عشان نجيب الـ id والـ category لكل المنتجات
             const { data, error } = await supabase.from('products').select('id, category')
             if (error) throw error
 
-            // تجميع الفئات الفريدة للقائمة
             const uniqueCategories = ['All', ...new Set(data.map(item => item.category).filter(Boolean))]
             setCategories(uniqueCategories)
 
-            // 👇 3. بناء الخريطة: كل منتج ورقمه والفئة بتاعته
             const map = {}
             data.forEach(product => {
                 map[product.id] = product.category
@@ -114,6 +111,7 @@ const Orders = () => {
         };
     }
 
+    // 👇 الفلتر الجديد عشان يدعم السلة والأوردرات القديمة مع بعض
     const filteredOrders = orders.filter(o => {
         const matchesSearch =
             (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -122,13 +120,15 @@ const Orders = () => {
 
         let matchesCategory = true;
         if (selectedCategory !== 'All') {
-            // 👇 4. التعديل المهم هنا: بنجيب الفئة باستخدام رقم المنتج (productId) من الخريطة اللي عملناها
-            // لأن items اللي في الأوردر مفهاش category بشكل مباشر، بس فيها productId
-            const productId = o.items?.productId;
-            const orderCategory = (productsMap[productId] || '').toLowerCase().trim();
             const filterCategory = selectedCategory.toLowerCase().trim();
+            // توحيد شكل الأوردر لمصفوفة دايماً حتى لو كان القديم (Object واحد)
+            const itemsArray = Array.isArray(o.items) ? o.items : (o.items ? [o.items] : []);
 
-            matchesCategory = orderCategory === filterCategory;
+            matchesCategory = itemsArray.some(item => {
+                const pId = item?.product?.id || item?.productId; // النظام الجديد || النظام القديم
+                const orderCategory = (productsMap[pId] || '').toLowerCase().trim();
+                return orderCategory === filterCategory;
+            });
         }
         return matchesSearch && matchesCategory;
     })
@@ -148,7 +148,6 @@ const Orders = () => {
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
 
-                    {/* زرار Clear Filters موجود هنا */}
                     {(search || selectedCategory !== 'All') && (
                         <button
                             onClick={() => { setSearch(''); setSelectedCategory('All') }}
@@ -206,9 +205,16 @@ const Orders = () => {
                             <tbody className="divide-y divide-gray-50">
                                 {filteredOrders.map((order) => {
                                     const statusInfo = getStatusInfo(order.status);
-                                    const items = order.items || {};
-                                    // 👇 نجيب الفئة هنا كمان عشان نعرضها صح في الجدول
-                                    const categoryName = productsMap[items.productId] || 'N/A';
+
+                                    // 👇 توحيد البيانات عشان الجدول يعرض أول منتج في الأوردر (حتى لو مجمع)
+                                    const itemsArray = Array.isArray(order.items) ? order.items : (order.items ? [order.items] : []);
+                                    const firstItem = itemsArray[0] || {};
+                                    const isNewFormat = !!firstItem.product;
+
+                                    const pId = isNewFormat ? firstItem.product?.id : firstItem.productId;
+                                    const pName = isNewFormat ? firstItem.product?.title : firstItem.productName;
+                                    const displayImg = isNewFormat ? (firstItem.product?.images?.[0] || firstItem.refImage) : firstItem.refImage;
+                                    const categoryName = productsMap[pId] || 'N/A';
 
                                     return (
                                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -229,15 +235,22 @@ const Orders = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    {items.refImage ? (
-                                                        <img src={items.refImage} className="w-10 h-10 rounded-lg object-cover border border-gray-100 shadow-sm" alt="prod" />
+                                                    {displayImg ? (
+                                                        <img src={displayImg} className="w-10 h-10 rounded-lg object-cover border border-gray-100 shadow-sm" alt="prod" />
                                                     ) : (
                                                         <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400"><PackageCheck size={16} /></div>
                                                     )}
                                                     <div>
-                                                        <div className="font-bold text-gray-800 line-clamp-1">{items.productName || 'Unknown Item'}</div>
+                                                        <div className="font-bold text-gray-800 line-clamp-1">
+                                                            {pName || 'Unknown Item'}
+                                                            {/* 👇 لو الأوردر فيه أكتر من منتج نوضحله */}
+                                                            {itemsArray.length > 1 && (
+                                                                <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                                                    +{itemsArray.length - 1} items
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <div className="flex items-center gap-2 mt-1">
-                                                            {/* عرضنا الفئة الصح هنا */}
                                                             <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">
                                                                 {categoryName}
                                                             </span>
@@ -298,6 +311,7 @@ const Orders = () => {
                 )}
             </div>
 
+            {/* 👇 نافذة عرض التفاصيل (Modal) معدلة لعرض مصفوفة المنتجات 👇 */}
             {selectedOrder && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setSelectedOrder(null)}>
                     <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
@@ -329,41 +343,76 @@ const Orders = () => {
                                 </div>
                             </div>
 
+                            {/* 👇 الدوران على كل المنتجات اللي جوه الطلب عشان نعرضها */}
                             {(() => {
-                                const items = selectedOrder.items || {};
-                                const categoryName = productsMap[items.productId] || 'N/A'; // الفئة هنا كمان
+                                const itemsArray = Array.isArray(selectedOrder.items) ? selectedOrder.items : (selectedOrder.items ? [selectedOrder.items] : []);
+
                                 return (
                                     <div>
-                                        <h4 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">Product Details</h4>
-                                        <div className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
-                                            {items.refImage ? (
-                                                <img src={items.refImage} className="w-24 h-24 rounded-lg object-cover border bg-white" alt="product" />
-                                            ) : (
-                                                <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400"><PackageCheck size={30} /></div>
-                                            )}
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-bold text-gray-800 text-lg">{items.productName || 'Unknown Item'}</p>
-                                                        <span className="text-xs bg-white border px-2 py-0.5 rounded text-gray-500 mt-1 inline-block">{categoryName}</span>
+                                        <h4 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">
+                                            Order Items ({itemsArray.length})
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {itemsArray.map((item, idx) => {
+                                                const isNewFormat = !!item.product;
+                                                const pId = isNewFormat ? item.product?.id : item.productId;
+                                                const pName = isNewFormat ? item.product?.title : item.productName;
+                                                const refImg = item.refImage;
+                                                const displayImg = isNewFormat ? (item.product?.images?.[0] || refImg) : refImg;
+                                                const catName = productsMap[pId] || 'N/A';
+
+                                                // في النظام القديم السعر كان للإجمالي، في الجديد كل منتج له سعره
+                                                const price = isNewFormat ? `${item.pricing?.finalPrice} EGP` : 'Included';
+
+                                                return (
+                                                    <div key={idx} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                                                        {displayImg ? (
+                                                            <img src={displayImg} className="w-20 h-20 rounded-lg object-cover border bg-white" alt="product" />
+                                                        ) : (
+                                                            <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400"><PackageCheck size={24} /></div>
+                                                        )}
+                                                        <div className="flex-1">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800 text-base">{pName || 'Unknown Item'}</p>
+                                                                    <span className="text-[10px] bg-white border px-2 py-0.5 rounded text-gray-500 mt-1 inline-block">{catName}</span>
+                                                                </div>
+                                                                {isNewFormat && <p className="font-bold text-primary text-sm">{price}</p>}
+                                                            </div>
+
+                                                            {item.customText && (
+                                                                <div className="mt-2 bg-white p-2 rounded border border-dashed border-gray-300">
+                                                                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Custom Text:</p>
+                                                                    <p className="text-xs font-medium text-gray-800">"{item.customText}"</p>
+                                                                </div>
+                                                            )}
+                                                            {item.bgColor && <p className="text-xs mt-1 text-gray-500">Color: {item.bgColor}</p>}
+                                                            {item.notes && <p className="text-xs mt-1 text-gray-500">Notes: {item.notes}</p>}
+
+                                                            {item.selections && Object.keys(item.selections).length > 0 && (
+                                                                <p className="text-xs mt-1 text-gray-500">
+                                                                    <span className="font-semibold">Add-ons:</span> {Object.values(item.selections).map(a => a.title).join(', ')}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <p className="font-bold text-primary text-lg">{selectedOrder.total_price} EGP</p>
-                                                </div>
-                                                {items.customText && (
-                                                    <div className="mt-3 bg-white p-2 rounded border border-dashed border-gray-300">
-                                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Custom Text:</p>
-                                                        <p className="text-sm font-medium text-gray-800">"{items.customText}"</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        {/* الإجمالي الكلي للطلب */}
+                                        <div className="mt-4 flex justify-between items-center bg-gray-100 p-3 rounded-lg border border-gray-200">
+                                            <span className="text-sm font-bold text-gray-600">Grand Total</span>
+                                            <span className="text-lg font-bold text-primary">{selectedOrder.total_price} EGP</span>
                                         </div>
                                     </div>
                                 )
                             })()}
 
-                            {selectedOrder.notes && (
+                            {/* دي لو في نوتس مكتوبة على مستوى الأوردر كله (أغلبها للنظام القديم) */}
+                            {selectedOrder.notes && !Array.isArray(selectedOrder.items) && (
                                 <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
-                                    <h4 className="text-xs font-bold uppercase text-yellow-800 mb-2">Additional Notes</h4>
+                                    <h4 className="text-xs font-bold uppercase text-yellow-800 mb-2">Order Notes</h4>
                                     <p className="text-sm text-yellow-900 leading-relaxed">{selectedOrder.notes}</p>
                                 </div>
                             )}

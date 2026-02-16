@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion'
-// 👇 ضفتلك أيقونة Store عشان خيار الاستلام
-import { X, Upload, Send, Loader2, ImagePlus, MapPin, Palette, Type, AlertCircle, Wallet, Home, Navigation, Check, Truck, Tag, Phone, Store } from 'lucide-react'
+import { X, Upload, Loader2, ImagePlus, Palette, Type, AlertCircle, Tag, ShoppingCart, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { openWhatsAppChat } from '../utils/whatsapp'
 import { supabase } from '../supabaseClient'
+// 👇 استيراد الـ Hook بتاع السلة
+import { useCart } from '../context/CartContext'
 
 // 🎨 قائمة الألوان
 const COMMON_COLORS = [
@@ -35,26 +35,14 @@ const getColorNameFromHex = (hex) => {
 };
 
 const OrderModal = ({ isOpen, onClose, product }) => {
-  // State Variables
-  const [customerName, setCustomerName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [governorate, setGovernorate] = useState('')
-  const [shippingRatesList, setShippingRatesList] = useState([])
-  const [shippingLoading, setShippingLoading] = useState(true)
+  // 👇 استخدام السلة
+  const { addToCart } = useCart()
 
-  const [address, setAddress] = useState('')
+  // State Variables (الخاصة بالمنتج فقط)
   const [customText, setCustomText] = useState('')
   const [bgColor, setBgColor] = useState('')
   const [pickerHex, setPickerHex] = useState('#ffffff')
   const [notes, setNotes] = useState('')
-
-  // 👇 حالة جديدة لطريقة الاستلام (شحن ولا استلام)
-  const [deliveryMethod, setDeliveryMethod] = useState('shipping') // 'shipping' or 'pickup'
-
-  // Location States
-  const [locationLink, setLocationLink] = useState('')
-  const [isLocating, setIsLocating] = useState(false)
-  const [gpsError, setGpsError] = useState('')
 
   // Addons States
   const [availableAddons, setAvailableAddons] = useState([])
@@ -71,55 +59,20 @@ const OrderModal = ({ isOpen, onClose, product }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  // 👇 تعديل حساب الشحن: جلب السعر والمدة
-  const selectedShippingData = shippingRatesList.find(r => r.governorate === governorate);
-  const baseShippingFee = selectedShippingData?.fee || 0;
-  // 👇 جلب مدة الشحن المتغيرة (أو فارغة لو لسه مختارش)
-  const estimatedDays = selectedShippingData?.estimated_days || '';
-  const shippingFee = deliveryMethod === 'pickup' ? 0 : baseShippingFee;
-
   useEffect(() => {
-    if (isOpen) {
-      fetchShippingRates()
-      if (product) fetchAddons()
-    }
-
     if (isOpen && product) {
+      fetchAddons()
       setSelections({})
       setSelectedFile(null)
       setCustomText('')
       setBgColor('')
       setPickerHex('#ffffff')
-      setGovernorate('')
-      setAddress('')
       setNotes('')
-      setPhone('')
-      setLocationLink('')
-      setIsLocating(false)
-      setGpsError('')
       setCouponCode('')
       setAppliedCoupon(null)
-      setDeliveryMethod('shipping') // Reset to shipping default
       setCouponMsg({ type: '', text: '' })
     }
   }, [product, isOpen])
-
-  const fetchShippingRates = async () => {
-    try {
-      setShippingLoading(true)
-      const { data, error } = await supabase
-        .from('shipping_rates')
-        .select('*')
-        .order('governorate', { ascending: true })
-
-      if (error) throw error
-      setShippingRatesList(data || [])
-    } catch (error) {
-      console.error("Error fetching rates:", error)
-    } finally {
-      setShippingLoading(false)
-    }
-  }
 
   const fetchAddons = async () => {
     setLoadingAddons(true)
@@ -136,11 +89,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-
-    if (!phone.trim() || phone.length < 10) {
-      setCouponMsg({ type: 'error', text: 'Please enter a valid phone number first.' })
-      return;
-    }
 
     setCouponLoading(true)
     setCouponMsg({ type: '', text: '' })
@@ -159,20 +107,12 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       const now = new Date()
       if (now < new Date(couponData.start_date)) throw new Error("Coupon hasn't started yet")
       if (now > new Date(couponData.end_date)) throw new Error("Coupon has expired")
-
       if (couponData.usage_limit && couponData.used_count >= couponData.usage_limit) {
         throw new Error("This coupon has reached its usage limit.")
       }
 
-      const { count } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('phone', phone.trim())
-        .eq('items->>coupon', couponCode.trim())
-
-      if (count > 0) {
-        throw new Error("You have already used this coupon code!")
-      }
+      // ⚠️ ملحوظة: شلنا التحقق من استخدام العميل للكوبون قبل كده برقم التليفون من هنا، 
+      // وهننقل التحقق ده لخطوة الدفع النهائية عشان رقم التليفون مبقاش موجود في المودال ده.
 
       setAppliedCoupon(couponData)
       setCouponMsg({ type: 'success', text: `Coupon applied! (${couponData.discount_type === 'percent' ? couponData.discount_value + '%' : couponData.discount_value + ' EGP'} OFF)` })
@@ -190,7 +130,6 @@ const OrderModal = ({ isOpen, onClose, product }) => {
       if (addon.ui_type === 'checkbox') {
         if (newSelections[addon.id]) delete newSelections[addon.id]
         else newSelections[addon.id] = addon
-
       } else if (addon.ui_type === 'radio') {
         if (newSelections[addon.id]) {
           delete newSelections[addon.id]
@@ -207,83 +146,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     })
   }
 
-  const autoSelectGovernorate = (addressData) => {
-    if (!addressData || shippingRatesList.length === 0) return;
-
-    const fullText = (addressData.display_name || '').toLowerCase();
-    let detectedGov = '';
-
-    if (fullText.includes('alexandria') || fullText.includes('الإسكندرية')) {
-      if (fullText.includes('agami') || fullText.includes('العجمي') || fullText.includes('hannoville')) {
-        const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('agami'));
-        if (match) detectedGov = match.governorate;
-      }
-      else if (fullText.includes('borg') || fullText.includes('burj') || fullText.includes('برج العرب')) {
-        const match = shippingRatesList.find(r => r.governorate.toLowerCase().includes('borg'));
-        if (match) detectedGov = match.governorate;
-      }
-
-      if (!detectedGov) {
-        const centerMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('center') && r.governorate.toLowerCase().includes('alexandria'));
-        if (centerMatch) {
-          detectedGov = centerMatch.governorate;
-        } else {
-          const fallbackMatch = shippingRatesList.find(r => r.governorate.toLowerCase().includes('alexandria'));
-          if (fallbackMatch) detectedGov = fallbackMatch.governorate;
-        }
-      }
-    }
-    else {
-      const foundRate = shippingRatesList.find(rate => {
-        const cleanName = rate.governorate.toLowerCase().replace('governorate', '').trim();
-        return fullText.includes(cleanName);
-      });
-      if (foundRate) detectedGov = foundRate.governorate;
-    }
-
-    if (detectedGov) {
-      setGovernorate(detectedGov);
-      setGpsError('');
-    } else {
-      setGpsError('Detected address, but could not match city automatically.');
-    }
-  }
-
-  const handleGetLocation = () => {
-    setIsLocating(true)
-    setGpsError('')
-    if (!navigator.geolocation) { alert("Geolocation is not supported"); setIsLocating(false); return; }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude
-        const lng = position.coords.longitude
-        const mapsUrl = `http://googleusercontent.com/maps.google.com/?q=${lat},${lng}`
-        setLocationLink(mapsUrl)
-
-        try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`)
-          const data = await response.json()
-
-          if (data && data.display_name) {
-            setAddress(data.display_name)
-            autoSelectGovernorate(data);
-          }
-        } catch (error) {
-          console.error("Could not fetch address text", error)
-        }
-        setIsLocating(false)
-      },
-      (error) => {
-        console.error("Error:", error);
-        alert("Could not get location.");
-        setIsLocating(false);
-      }
-    )
-  }
-
   const calculateTotals = () => {
-    if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0, grandTotal: 0 }
+    if (!product) return { productTotalBeforeDiscount: 0, discountAmount: 0, finalProductPrice: 0 }
 
     let productTotal = Number(product.price)
 
@@ -312,17 +176,15 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     if (discountAmount > productTotal) discountAmount = productTotal
 
     const finalProductPrice = Math.ceil(productTotal - discountAmount)
-    const grandTotal = finalProductPrice + shippingFee
 
     return {
       productTotalBeforeDiscount: Math.ceil(productTotal),
       discountAmount: Math.ceil(discountAmount),
-      finalProductPrice,
-      grandTotal
+      finalProductPrice
     }
   }
 
-  const { productTotalBeforeDiscount, discountAmount, finalProductPrice, grandTotal } = calculateTotals()
+  const { productTotalBeforeDiscount, discountAmount, finalProductPrice } = calculateTotals()
 
   const uploadImage = async (file) => {
     try {
@@ -336,147 +198,46 @@ const OrderModal = ({ isOpen, onClose, product }) => {
     } catch (error) { return null }
   }
 
-  const handleSubmit = async (e) => {
+  // 👇 دالة الإضافة للسلة بدل الـ Checkout المباشر
+  const handleAddToCart = async (e, closeAfterAdd = true) => {
     e.preventDefault()
-    if (!customerName.trim()) { alert('Please enter name'); return }
-    if (!phone.trim()) { alert('Please enter phone number'); return }
-
-    // 👇 التحقق من العنوان فقط لو الشحن مختار
-    if (deliveryMethod === 'shipping') {
-      if (!governorate) { alert('Please select your city for shipping'); return }
-      if (!address.trim()) { alert('Please enter detailed address'); return }
-    }
 
     if (selectedFile) setIsUploading(true)
 
     let uploadedImageUrl = ''
     if (selectedFile) {
       uploadedImageUrl = await uploadImage(selectedFile)
-      if (!uploadedImageUrl) { setIsUploading(false); return }
-    }
-
-    // تجهيز بيانات الموقع لو استلام
-    const finalGovernorate = deliveryMethod === 'pickup' ? "Alexandria (Pickup)" : governorate
-    const finalAddress = deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : address
-
-    try {
-      const { error: orderError } = await supabase.from('orders').insert([{
-        customer_name: customerName,
-        phone: phone,
-        governorate: finalGovernorate,
-        address: finalAddress,
-        total_price: grandTotal,
-        shipping_fee: shippingFee,
-        status: 'pending',
-        items: {
-          productId: product.id,
-          productName: product.title,
-          addons: selections,
-          customText: customText,
-          bgColor: bgColor,
-          coupon: appliedCoupon ? appliedCoupon.code : null,
-          refImage: uploadedImageUrl,
-          deliveryMethod: deliveryMethod // بنسجل طريقة التوصيل
-        },
-        notes: notes
-      }])
-
-      if (orderError) console.error("Dashboard insert failed", orderError)
-
-      await supabase.rpc('increment_sold_count', { product_id: product.id })
-
-      if (appliedCoupon) {
-        await supabase.rpc('increment_coupon_usage', { coupon_code: appliedCoupon.code })
+      if (!uploadedImageUrl) {
+        setIsUploading(false);
+        alert('Failed to upload image, please try again.');
+        return;
       }
-    } catch (err) {
-      console.error(err)
     }
 
-    // 👇👇👇👇 الرسالة (ستايل الفاتورة الرسمية) 👇👇👇👇
-
-    let message = `*NEW ORDER REQUEST* 🛒\n`;
-    message += `Product: *${product.title}*\n`;
-    message += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
-    message += `--------------------------------\n`;
-
-    // بيانات العميل والتوصيل
-    message += `*CUSTOMER DETAILS*\n`;
-    message += `> Name: ${customerName}\n`;
-    message += `> Phone: ${phone}\n`;
-
-    // 👇 تغيير الرسالة حسب طريقة الاستلام
-    if (deliveryMethod === 'pickup') {
-      message += `> Type: *PICKUP @ HENAWY'S ART* 🏠\n`;
-    } else {
-      message += `> Type: Home Delivery 🚚\n`;
-      message += `> City: ${governorate}\n`;
-      message += `> Address: ${address}\n`;
-      if (locationLink) message += `> GPS: ${locationLink}\n`;
-    }
-    message += `\n`;
-
-    message += `*ORDER SPECIFICATIONS*\n`;
-    if (customText) message += `• Text/Date: "${customText}"\n`;
-    if (bgColor) message += `• Color: ${bgColor}\n`;
-    if (notes) message += `• Notes: ${notes}\n`;
-    if (uploadedImageUrl) message += `• Reference: Attached (Link below)\n`;
-
-    const selectedList = Object.values(selections);
-    if (selectedList.length > 0) {
-      message += `\n*SELECTED ADD-ONS*\n`;
-      selectedList.forEach(addon => {
-        let priceIndicator = '';
-        if (addon.operation_type === 'fixed') priceIndicator = ` (+${addon.value} EGP)`;
-        message += `[+] ${addon.title}${priceIndicator}\n`;
-      });
-    }
-    message += `--------------------------------\n`;
-
-    message += `*PAYMENT BREAKDOWN*\n`;
-
-    if (product.is_starting_price) {
-      message += `Base Price: Starts from ${product.price} EGP\n`;
-      message += `(Final price TBD upon confirmation)\n`;
-    } else {
-      if (selectedList.length > 0) {
-        message += `Item Price (with Add-ons): ${productTotalBeforeDiscount} EGP\n`;
-      } else {
-        message += `Item Price: ${productTotalBeforeDiscount} EGP\n`;
+    // تجهيز عنصر السلة
+    const cartItem = {
+      product: product,
+      selections: selections,
+      customText: customText,
+      bgColor: bgColor,
+      notes: notes,
+      refImage: uploadedImageUrl,
+      appliedCoupon: appliedCoupon,
+      pricing: {
+        basePrice: productTotalBeforeDiscount,
+        discount: discountAmount,
+        finalPrice: finalProductPrice
       }
-
-      if (appliedCoupon) {
-        message += `Coupon (${appliedCoupon.code}): -${discountAmount} EGP\n`;
-        message += `Net Item Price: ${finalProductPrice} EGP\n`;
-      }
-
-      // توضيح الشحن في الحساب
-      if (deliveryMethod === 'pickup') {
-        message += `Shipping: 0 EGP (Pickup)\n`;
-      } else {
-        // 👇 ضفنا وقت التوصيل في الرسالة للواتساب لو في شحن
-        message += `Shipping Fee: ${shippingFee} EGP ${estimatedDays ? `(${estimatedDays})` : ''}\n`;
-      }
-
-      message += `========================\n`;
-      message += `*TOTAL: ${grandTotal} EGP*\n`;
-      message += `========================\n`;
     }
 
-    message += `\n*IMPORTANT NOTES*\n`;
-    message += `1. Processing Time: 10-14 Working Days.\n`; // خليناها Processing Time
-    message += `2. Payment: 50% Deposit required via Wallet.\n`;
-
-    if (uploadedImageUrl) {
-      message += `\nRef Image Link:\n${uploadedImageUrl}`;
-    }
-
-    const encodedMessage = encodeURIComponent(message);
-    const myNumber = "201280140268";
-
-    window.open(`https://api.whatsapp.com/send?phone=${myNumber}&text=${encodedMessage}`, '_blank');
+    // إضافة للسلة باستخدام הـ Context
+    addToCart(cartItem)
 
     setIsUploading(false)
-    onClose()
+    if (closeAfterAdd) {
+      onClose()
+      // ممكن هنا تظهر Toaster صغير يقوله "Added to Cart"
+    }
   }
 
   return (
@@ -499,35 +260,22 @@ const OrderModal = ({ isOpen, onClose, product }) => {
             {/* Header Sticky */}
             <div className="sticky top-0 z-20 bg-gradient-to-r from-primary to-primary-dark p-6 text-white shadow-lg backdrop-blur-md">
               <button onClick={onClose} className="absolute top-4 right-4 bg-white/20 p-1 rounded-full hover:bg-white/40 transition-all"><X size={20} /></button>
-              <h2 className="text-xl md:text-2xl font-script font-bold">Customize Order</h2>
+              <h2 className="text-xl md:text-2xl font-script font-bold">Customize Item</h2>
 
               <div className="flex flex-col mt-2">
                 {product.is_starting_price ? (
-                  <span className="text-lg font-bold text-accent">Discussion via WhatsApp</span>
+                  <span className="text-lg font-bold text-accent">Price varies (Base: {product.price} EGP)</span>
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-accent drop-shadow-sm">{grandTotal} <span className="text-lg">EGP</span></span>
-                    {appliedCoupon && <span className="text-sm text-white/70 line-through">{grandTotal + discountAmount} EGP</span>}
-                  </div>
-                )}
-                {!product.is_starting_price && (
-                  <div className="text-xs text-white/90 flex flex-wrap items-center gap-2 mt-1 font-medium">
-                    <span className="bg-white/10 px-2 py-0.5 rounded">Item: {finalProductPrice}</span>
-                    <span>+</span>
-                    {deliveryMethod === 'pickup' ? (
-                      <span className="flex items-center bg-green-500/20 px-2 py-0.5 rounded text-white"><Store size={10} className="mr-1" /> Pickup: Free</span>
-                    ) : (
-                      // 👇 عرض مدة الشحن جنب السعر
-                      <span className="flex items-center bg-white/20 px-2 py-0.5 rounded">
-                        <Truck size={10} className="mr-1" /> Ship: {shippingFee} EGP {estimatedDays && `(${estimatedDays})`}
-                      </span>
-                    )}
+                    {/* 👇 الإجمالي هنا للمنتج ده بس (بدون شحن) لأن الشحن هيتحسب في السلة ككل */}
+                    <span className="text-3xl font-bold text-accent drop-shadow-sm">{finalProductPrice} <span className="text-lg">EGP</span></span>
+                    {appliedCoupon && <span className="text-sm text-white/70 line-through">{productTotalBeforeDiscount} EGP</span>}
                   </div>
                 )}
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={(e) => handleAddToCart(e, true)} className="p-6 space-y-6">
 
               {/* Addons Grid */}
               <div className="space-y-3">
@@ -610,26 +358,11 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               </div>
 
-              {/* Phone Section */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                  <Phone size={16} className="text-primary" /> Phone Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="01xxxxxxxxx"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
-                  required
-                />
-              </div>
-
-              {/* Coupon Section */}
+              {/* Coupon Section للمنتج ده */}
               {!product.is_starting_price && (
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                    <Tag size={16} className="text-primary" /> Coupon Code
+                    <Tag size={16} className="text-primary" /> Coupon Code (For this item)
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -651,127 +384,28 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               )}
 
-              {/* Address Section with Delivery Method */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Full Name <span className="text-red-500">*</span></label>
-                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none" required />
-                </div>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes for this item..." />
 
-                {/* 👇 خيارات التوصيل */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Delivery Method</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div
-                      onClick={() => setDeliveryMethod('shipping')}
-                      className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'shipping'
-                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                    >
-                      <Truck size={18} /> Home Delivery
-                    </div>
-                    <div
-                      onClick={() => setDeliveryMethod('pickup')}
-                      className={`cursor-pointer p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${deliveryMethod === 'pickup'
-                        ? 'border-primary bg-primary/5 text-primary-dark font-bold'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                    >
-                      <Store size={18} /> Pickup (Henawy's)
-                    </div>
-                  </div>
-                </div>
+              {/* 👇 زراير الإضافة للسلة 👇 */}
+              <div className="grid grid-cols-1 gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className={`w-full bg-accent hover:bg-yellow-400 text-gray-900 font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}
+                >
+                  {isUploading ? <><Loader2 className="animate-spin" size={20} /> Processing...</> : <><ShoppingCart size={20} /> Add to Cart & Checkout</>}
+                </button>
 
-                {/* 👇 المحافظة والعنوان يظهروا فقط في حالة الشحن */}
-                <AnimatePresence>
-                  {deliveryMethod === 'shipping' && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="space-y-4 overflow-hidden"
-                    >
-                      <div>
-                        <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                          <MapPin size={16} className="text-primary" /> Governorate <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={governorate}
-                            onChange={e => setGovernorate(e.target.value)}
-                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 appearance-none cursor-pointer outline-none focus:border-primary ${gpsError ? 'border-yellow-400' : ''}`}
-                            required={deliveryMethod === 'shipping'} // اجباري فقط لو شحن
-                          >
-                            <option value="">{shippingLoading ? "Loading rates..." : "Select your city"}</option>
-                            {shippingRatesList.map(rate => (
-                              <option key={rate.id} value={rate.governorate}>
-                                {rate.governorate} (+{rate.fee} EGP)
-                              </option>
-                            ))}
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">▼</div>
-                        </div>
-                        {gpsError && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {gpsError}</p>}
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <label className="flex items-center gap-2 text-sm font-bold text-gray-700"><Home size={16} className="text-primary" /> Address <span className="text-red-500">*</span></label>
-                          <button type="button" onClick={handleGetLocation} disabled={isLocating} className={`text-xs px-4 py-1.5 rounded-full font-bold flex items-center gap-1 transition-all shadow-sm ${locationLink ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
-                            {isLocating ? <><Loader2 size={12} className="animate-spin" /> Detecting...</> : locationLink ? <><Check size={12} /> Detected</> : <><Navigation size={12} /> Detect My Location</>}
-                          </button>
-                        </div>
-                        <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className={`w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none ${locationLink ? 'border-green-500 bg-green-50/30' : 'border-gray-200'}`} placeholder={locationLink ? "Please add: Floor, Apartment No..." : "Street Name, Building No, Floor..."} required={deliveryMethod === 'shipping'} />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes..." />
+                <button
+                  type="button"
+                  onClick={(e) => handleAddToCart(e, true)}
+                  disabled={isUploading}
+                  className={`w-full bg-white border-2 border-gray-200 hover:border-primary text-gray-700 hover:text-primary font-bold py-3 rounded-xl flex justify-center items-center transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}
+                >
+                  Add to Cart & Continue Shopping
+                </button>
               </div>
 
-              {/* Info Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-col justify-center">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertCircle size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-blue-800 uppercase">Order Timeline</span>
-                  </div>
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    • Preparation: <span className="font-bold">10 to 14 days</span>
-                  </p>
-                  {/* 👇 السطر الجديد: هيظهر مدة الشحن لو هو مختار توصيل ومختار المحافظة */}
-                  {deliveryMethod === 'shipping' && governorate && (
-                    <p className="text-xs text-blue-700 leading-relaxed mt-0.5">
-                      • Shipping: <span className="font-bold">{estimatedDays}</span>
-                    </p>
-                  )}
-                  {/* لو مختار استلام من المقر */}
-                  {deliveryMethod === 'pickup' && (
-                    <p className="text-xs text-blue-700 leading-relaxed mt-0.5">
-                      • Shipping: <span className="font-bold">Pickup from Store</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Payment Card */}
-                <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wallet size={16} className="text-purple-600" />
-                    <span className="text-xs font-bold text-purple-800 uppercase">Payment Policy</span>
-                  </div>
-                  <p className="text-xs text-purple-700 font-medium">50% Deposit via Wallet.</p>
-                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase flex items-center gap-1">
-                    🚫 No Instapay
-                  </p>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button type="submit" disabled={isUploading} className={`w-full bg-accent hover:bg-yellow-400 text-gray-900 font-bold py-4 rounded-xl flex justify-center items-center gap-3 shadow-lg shadow-yellow-500/20 transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}>
-                {isUploading ? <><Loader2 className="animate-spin" size={20} /> Processing...</> : <><Send size={20} /> Checkout on WhatsApp</>}
-              </button>
             </form>
           </motion.div>
         </motion.div>

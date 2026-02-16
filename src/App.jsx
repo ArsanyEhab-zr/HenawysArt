@@ -3,6 +3,9 @@ import { Toaster } from 'react-hot-toast'
 import { useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
+// 👇 استيراد الـ CartProvider
+import { CartProvider } from './context/CartContext'
+
 // Components العامة
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -131,62 +134,65 @@ function App() {
   }, [])
 
   return (
-    <Router>
-      <Toaster position="top-right" />
+    // 👇 لفينا الموقع كله بـ CartProvider
+    <CartProvider>
+      <Router>
+        <Toaster position="top-right" />
 
-      <Layout>
-        <Routes>
-          {/* ========================================= */}
-          {/* 🌍 المسارات العامة */}
-          {/* ========================================= */}
-          <Route path="/" element={<Home />} />
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/shop/:category" element={<CategoryPage />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/developer" element={<Developer />} />
-          <Route path="/policies" element={<Policies />} />
+        <Layout>
+          <Routes>
+            {/* ========================================= */}
+            {/* 🌍 المسارات العامة */}
+            {/* ========================================= */}
+            <Route path="/" element={<Home />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/shop/:category" element={<CategoryPage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/developer" element={<Developer />} />
+            <Route path="/policies" element={<Policies />} />
 
-          {/* ========================================= */}
-          {/* 🔐 تسجيل الدخول */}
-          {/* ========================================= */}
-          <Route path="/login" element={<Login />} />
+            {/* ========================================= */}
+            {/* 🔐 تسجيل الدخول */}
+            {/* ========================================= */}
+            <Route path="/login" element={<Login />} />
 
-          {/* ========================================= */}
-          {/* ⚙️ الداش بورد */}
-          {/* ========================================= */}
-          <Route path="/dashboard" element={
-            <RequireAuth>
-              <DashboardLayout />
-            </RequireAuth>
-          }>
-            <Route index element={<DashboardHome />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="products" element={<Products />} />
-
-            {/* صفحة سجل الزوار */}
-            <Route path="visitors" element={
-              <RequireAuth allowedRoles={['admin']}>
-                <VisitorLogs />
+            {/* ========================================= */}
+            {/* ⚙️ الداش بورد */}
+            {/* ========================================= */}
+            <Route path="/dashboard" element={
+              <RequireAuth>
+                <DashboardLayout />
               </RequireAuth>
-            } />
+            }>
+              <Route index element={<DashboardHome />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="products" element={<Products />} />
 
-            <Route path="users" element={
-              <RequireAuth allowedRoles={['admin']}>
-                <Users />
-              </RequireAuth>
-            } />
+              {/* صفحة سجل الزوار */}
+              <Route path="visitors" element={
+                <RequireAuth allowedRoles={['admin']}>
+                  <VisitorLogs />
+                </RequireAuth>
+              } />
 
-            <Route path="settings" element={
-              <RequireAuth allowedRoles={['admin']}>
-                <Settings />
-              </RequireAuth>
-            } />
-          </Route>
+              <Route path="users" element={
+                <RequireAuth allowedRoles={['admin']}>
+                  <Users />
+                </RequireAuth>
+              } />
 
-        </Routes>
-      </Layout>
-    </Router>
+              <Route path="settings" element={
+                <RequireAuth allowedRoles={['admin']}>
+                  <Settings />
+                </RequireAuth>
+              } />
+            </Route>
+
+          </Routes>
+        </Layout>
+      </Router>
+    </CartProvider>
   )
 }
 
