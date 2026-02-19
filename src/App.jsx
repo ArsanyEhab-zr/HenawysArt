@@ -30,11 +30,13 @@ import Products from './dashboard/Products'
 import Settings from './dashboard/Settings'
 import VisitorLogs from './dashboard/VisitorLogs'
 
+// 👇 استدعاء الثيم الذكي
+import SmartTheme from './components/SmartTheme'
+
 const Layout = ({ children }) => {
   const location = useLocation()
   const hideHeaderFooter = location.pathname.startsWith('/dashboard') || location.pathname === '/login'
 
-  // 👇 كود حماية ذكي بيظبط الناف بار بس لو شريط جوجل شغال (بيشوف لو جوجل زق الـ body لتحت)
   useEffect(() => {
     const fixGoogleTranslateBar = () => {
       const bodyTop = document.body.style.top;
@@ -42,10 +44,8 @@ const Layout = ({ children }) => {
 
       if (nav) {
         if (bodyTop && bodyTop !== '0px') {
-          // لو جوجل زق الصفحة، هنزق الناف بار معاه
           nav.style.top = bodyTop;
         } else {
-          // لو إنجليزي أو مفيش شريط، يرجع يلزق فوق
           nav.style.top = '0px';
         }
       }
@@ -58,8 +58,11 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    // 👇 منع الـ Scroll العرضي (عشان الصفحة متتزقش يمين في العربي)
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden relative">
+
+      {/* 👇 وضع الثيم الذكي هنا عشان يظهر في كل الصفحات ما عدا الداش بورد 👇 */}
+      {!hideHeaderFooter && <SmartTheme />}
+
       {!hideHeaderFooter && <Navbar />}
 
       <div className="flex-grow w-full">
