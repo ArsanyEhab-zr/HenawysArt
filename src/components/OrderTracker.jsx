@@ -16,7 +16,7 @@ const OrderTracker = () => {
             fetchLatestOrder(phone);
 
             // ==========================================
-            // 🚀 التحديث اللحظي (Realtime) لأوردر العميل ده بس
+            // 🚀 التحديث اللحظي (Realtime) السريع جداً وموفر للباقة
             // ==========================================
             const orderSubscription = supabase.channel(`tracker-${phone}`)
                 .on(
@@ -25,16 +25,15 @@ const OrderTracker = () => {
                         event: 'UPDATE',
                         schema: 'public',
                         table: 'orders',
-                        filter: `phone=eq.${phone}` // العميل بيراقب أوردره بس!
+                        filter: `phone=eq.${phone}` // العميل بيراقب تليفونه بس!
                     },
                     (payload) => {
-                        console.log("Order updated in realtime!", payload.new);
-                        setOrder(payload.new); // تحديث الحالة فوراً على الشاشة
+                        console.log("Order updated!", payload.new);
+                        setOrder(payload.new); // تحديث فوري بدون ريفرش
                     }
                 )
                 .subscribe();
 
-            // تنظيف الاتصال لما العميل يقفل الموقع
             return () => {
                 supabase.removeChannel(orderSubscription);
             };
@@ -62,25 +61,25 @@ const OrderTracker = () => {
 
     if (!trackedPhone) return null;
 
-    // المراحل اللي بتظهر للعميل
+    // المراحل متطابقة تماماً مع الداش بورد بتاعتك
     const statuses = [
         { id: 'pending', label: 'Pending', icon: Clock, desc: 'Order received & waiting for review' },
-        { id: 'processing', label: 'Drawing/Making', icon: Paintbrush, desc: 'Your art is being created!' },
+        { id: 'confirmed', label: 'Confirmed & Making', icon: Paintbrush, desc: 'Your art is being created!' },
         { id: 'shipped', label: 'Out for Delivery', icon: Truck, desc: 'Your package is on the way' },
         { id: 'delivered', label: 'Delivered', icon: CheckCircle2, desc: 'Enjoy your art!' }
     ];
 
-    // 👇 هنا بنربط الحالات اللي في الداش بورد بالحالات اللي فوق 👇
+    // 👇 المترجم الذكي: بياخد الجملة اللي في الداش بورد وبيفهمها 👇
     const mapStatus = (dbStatus) => {
         if (!dbStatus) return 'pending';
         const s = dbStatus.toLowerCase();
 
-        // لو كتبت في الداش بورد أي كلمة من دول، هيفهمها ويحرك الخط
-        if (s.includes('pend') || s.includes('review') || s.includes('wait')) return 'pending';
-        if (s.includes('process') || s.includes('draw') || s.includes('work') || s.includes('mak')) return 'processing';
-        if (s.includes('ship') || s.includes('way') || s.includes('out')) return 'shipped';
-        if (s.includes('deliver') || s.includes('done') || s.includes('complet')) return 'delivered';
-        if (s.includes('cancel')) return 'cancelled';
+        // بيقرا الكلمة الإنجليزي أو العربي اللي إنت مختارها من القائمة
+        if (s.includes('pending') || s.includes('قيد')) return 'pending';
+        if (s.includes('confirmed') || s.includes('مؤكد')) return 'confirmed';
+        if (s.includes('shipped') || s.includes('شحن')) return 'shipped';
+        if (s.includes('delivered') || s.includes('توصيل')) return 'delivered';
+        if (s.includes('cancelled') || s.includes('ملغي')) return 'cancelled';
 
         return 'pending';
     };
