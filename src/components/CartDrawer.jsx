@@ -230,11 +230,13 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 shipping_fee: finalShippingFee,
                 status: 'pending',
                 items: cartItems,
-                // 👇 بنحفظ كود كوبون السلة عشان الداش بورد
                 applied_cart_coupon: appliedCartCoupon ? appliedCartCoupon.code : null
             }]);
 
             if (orderError) throw orderError;
+
+            // 👇 السطر السحري اللي بيحفظ الرقم عشان يشغل ودجت التتبع 👇
+            localStorage.setItem('henawy_tracked_phone', userInfo.phone.trim());
 
             for (const item of cartItems) {
                 await supabase.rpc('increment_sold_count', { product_id: item.product.id });
@@ -284,7 +286,6 @@ const CartDrawer = ({ isOpen, onClose }) => {
             message += `*PAYMENT BREAKDOWN*\n`;
             message += `Cart Items Total: ${rawSubtotal} EGP\n`;
 
-            // 👇 لو في كوبون ع السلة بنوضحه في الفاتورة
             if (appliedCartCoupon) {
                 message += `Cart Discount (${appliedCartCoupon.code}): -${cartDiscountAmount} EGP\n`;
             }

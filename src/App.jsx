@@ -29,6 +29,7 @@ import Users from './dashboard/Users'
 import Products from './dashboard/Products'
 import Settings from './dashboard/Settings'
 import VisitorLogs from './dashboard/VisitorLogs'
+import OrderTracker from './components/OrderTracker'
 
 
 
@@ -59,13 +60,14 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden relative">
 
-     
+      {!hideHeaderFooter && <OrderTracker />}
 
       {!hideHeaderFooter && <Navbar />}
 
       <div className="flex-grow w-full">
         {children}
       </div>
+      
 
       {!hideHeaderFooter && <Footer />}
     </div>
