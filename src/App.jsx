@@ -30,8 +30,7 @@ import Products from './dashboard/Products'
 import Settings from './dashboard/Settings'
 import VisitorLogs from './dashboard/VisitorLogs'
 
-// 👇 استدعاء الثيم الذكي
-import SmartTheme from './components/SmartTheme'
+
 
 const Layout = ({ children }) => {
   const location = useLocation()
@@ -60,8 +59,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden relative">
 
-      {/* 👇 وضع الثيم الذكي هنا عشان يظهر في كل الصفحات ما عدا الداش بورد 👇 */}
-      {!hideHeaderFooter && <SmartTheme />}
+     
 
       {!hideHeaderFooter && <Navbar />}
 

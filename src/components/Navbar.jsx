@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 import LanguageToggle from './LanguageToggle'
 import { useCart } from '../context/CartContext'
 import CartDrawer from './CartDrawer'
+import SmartTheme from './SmartTheme' // لو هما في نفس الفولدر
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -187,7 +188,9 @@ const Navbar = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        <SmartTheme />
       </motion.nav>
+      
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
