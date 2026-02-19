@@ -9,13 +9,12 @@ import { toast } from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
 
 const Products = () => {
-    // 👇 State للتبديل بين التابات (products, categories, addons)
     const [activeTab, setActiveTab] = useState('products')
 
     // Data States
     const [products, setProducts] = useState([])
     const [categories, setCategories] = useState([])
-    const [addons, setAddons] = useState([]) // 👈 حالة جديدة للإضافات
+    const [addons, setAddons] = useState([])
 
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -41,7 +40,7 @@ const Products = () => {
     })
     const [uploadingCatImage, setUploadingCatImage] = useState(false)
 
-    // ==================== Addon Modal States (جديد) ====================
+    // ==================== Addon Modal States ====================
     const [isAddonModalOpen, setIsAddonModalOpen] = useState(false)
     const [editingAddon, setEditingAddon] = useState(null)
     const [addonFormData, setAddonFormData] = useState({
@@ -54,7 +53,6 @@ const Products = () => {
     useEffect(() => {
         fetchData()
 
-        // Realtime Subscriptions
         const prodChannel = supabase.channel('realtime-products-admin')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
                 if (payload.eventType === 'INSERT') setProducts(prev => [payload.new, ...prev])
@@ -67,7 +65,6 @@ const Products = () => {
                 fetchCategories()
             }).subscribe()
 
-        // 👈 اشتراك الإضافات
         const addonsChannel = supabase.channel('realtime-addons-admin')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'product_addons' }, (payload) => {
                 if (payload.eventType === 'INSERT') setAddons(prev => [payload.new, ...prev])
@@ -108,6 +105,33 @@ const Products = () => {
         setAddons(data || [])
     }
 
+
+    // 👇👇 دالة الرفع الموحدة لكلاوديناري (Cloudinary) 👇👇
+    const uploadToCloudinary = async (file) => {
+        const CLOUD_NAME = 'ddnktpjsl';
+        const UPLOAD_PRESET = 'henawy_uploads';
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', UPLOAD_PRESET);
+        formData.append('cloud_name', CLOUD_NAME);
+
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.secure_url) {
+            // إضافة أكواد سحرية لتقليل الحجم أوتوماتيكياً (Quality Auto & Format Auto)
+            return data.secure_url.replace('/upload/', '/upload/q_auto,f_auto/');
+        } else {
+            throw new Error('Cloudinary upload failed');
+        }
+    }
+
+
     // ==================== Product Functions ====================
 
     const openProductModal = (product = null) => {
@@ -139,20 +163,22 @@ const Products = () => {
         if (files.length === 0) return
         setUploadingImages(true)
         const newImageUrls = []
+
+        // احتفظنا بضغط الصور على المتصفح عشان الرفع يكون أسرع لك كأدمن
         const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/webp' }
 
         try {
             for (const file of files) {
                 const compressedFile = await imageCompression(file, options)
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`
-                const { error } = await supabase.storage.from('product-images').upload(fileName, compressedFile)
-                if (error) throw error
-                const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
-                newImageUrls.push(data.publicUrl)
+                const cloudUrl = await uploadToCloudinary(compressedFile)
+                newImageUrls.push(cloudUrl)
             }
             setProductFormData(prev => ({ ...prev, images: [...prev.images, ...newImageUrls] }))
-            toast.success(`${newImageUrls.length} images uploaded!`)
-        } catch (err) { toast.error("Upload failed") }
+            toast.success(`${newImageUrls.length} images uploaded to Cloudinary!`)
+        } catch (err) {
+            toast.error("Upload failed")
+            console.error(err)
+        }
         finally { setUploadingImages(false) }
     }
 
@@ -229,12 +255,13 @@ const Products = () => {
         setUploadingCatImage(true)
         try {
             const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1000, useWebWorker: true, fileType: 'image/webp' })
-            const fileName = `cat-${Date.now()}.webp`
-            await supabase.storage.from('product-images').upload(fileName, compressed)
-            const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
-            setCatFormData(prev => ({ ...prev, image_url: data.publicUrl }))
-            toast.success('Image uploaded')
-        } catch (err) { toast.error('Upload failed') }
+            const cloudUrl = await uploadToCloudinary(compressed)
+            setCatFormData(prev => ({ ...prev, image_url: cloudUrl }))
+            toast.success('Category Image uploaded')
+        } catch (err) {
+            toast.error('Upload failed')
+            console.error(err)
+        }
         finally { setUploadingCatImage(false) }
     }
 
@@ -264,7 +291,7 @@ const Products = () => {
         toast.success('Category deleted')
     }
 
-    // ==================== Addon Functions (جديد) ====================
+    // ==================== Addon Functions ====================
 
     const openAddonModal = (addon = null) => {
         if (addon) {
@@ -288,12 +315,13 @@ const Products = () => {
         setUploadingAddonImage(true)
         try {
             const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1000, useWebWorker: true, fileType: 'image/webp' })
-            const fileName = `addons/${Date.now()}.webp`
-            await supabase.storage.from('product-images').upload(fileName, compressed)
-            const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
-            setAddonFormData(prev => ({ ...prev, image_url: data.publicUrl }))
-            toast.success('Image uploaded')
-        } catch (err) { toast.error('Upload failed') }
+            const cloudUrl = await uploadToCloudinary(compressed)
+            setAddonFormData(prev => ({ ...prev, image_url: cloudUrl }))
+            toast.success('Addon Image uploaded')
+        } catch (err) {
+            toast.error('Upload failed')
+            console.error(err)
+        }
         finally { setUploadingAddonImage(false) }
     }
 
@@ -324,7 +352,6 @@ const Products = () => {
 
     // ==================== Render ====================
 
-    // زرار الـ Add اللي فوق هيتغير بناءً على التاب
     const handleAddClick = () => {
         if (activeTab === 'products') openProductModal()
         else if (activeTab === 'categories') openCategoryModal()
@@ -348,7 +375,6 @@ const Products = () => {
                     <p className="text-gray-500 text-sm">Manage products, categories & add-ons</p>
                 </div>
 
-                {/* 👇👇 Tabs Switcher 👇👇 */}
                 <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
                     {['products', 'categories', 'addons'].map((tab) => (
                         <button
@@ -444,7 +470,7 @@ const Products = () => {
                         </div>
                     )}
 
-                    {/* ================= Addons View (جديد) ================= */}
+                    {/* ================= Addons View ================= */}
                     {activeTab === 'addons' && (
                         <div className="space-y-6">
                             <div className="relative max-w-md">
@@ -494,7 +520,6 @@ const Products = () => {
                             <button onClick={() => setIsProductModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleProductSubmit} className="p-6 space-y-6">
-                            {/* ... (نفس كود رفع صور المنتجات) ... */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-bold text-gray-700">Images</label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -576,7 +601,7 @@ const Products = () => {
                 </div>
             )}
 
-            {/* ================= Addon Modal (جديد) ================= */}
+            {/* ================= Addon Modal ================= */}
             {isAddonModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-lg p-6">

@@ -202,16 +202,34 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
   const { productTotalBeforeDiscount, discountAmount, finalProductPrice } = calculateTotals()
 
+  // 👇 دالة الرفع الجديدة باستخدام Cloudinary 👇
   const uploadImage = async (file) => {
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `${fileName}`
-      const { error: uploadError } = await supabase.storage.from('client-uploads').upload(filePath, file)
-      if (uploadError) throw uploadError
-      const { data } = supabase.storage.from('client-uploads').getPublicUrl(filePath)
-      return data.publicUrl
-    } catch (error) { return null }
+      // ⚠️ غير كلمة YOUR_CLOUD_NAME بالـ Cloud Name بتاعك الحقيقي
+      const CLOUD_NAME = 'ddnktpjsl';
+      const UPLOAD_PRESET = 'henawy_uploads';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('cloud_name', CLOUD_NAME);
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        return data.secure_url; // اللينك السريع المضغوط
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error("Cloudinary Error:", error);
+      return null;
+    }
   }
 
   const handleAddToCart = async (e, closeAfterAdd = true) => {
