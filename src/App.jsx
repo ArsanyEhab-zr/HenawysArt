@@ -31,8 +31,6 @@ import Settings from './dashboard/Settings'
 import VisitorLogs from './dashboard/VisitorLogs'
 import OrderTracker from './components/OrderTracker'
 
-
-
 const Layout = ({ children }) => {
   const location = useLocation()
   const hideHeaderFooter = location.pathname.startsWith('/dashboard') || location.pathname === '/login'

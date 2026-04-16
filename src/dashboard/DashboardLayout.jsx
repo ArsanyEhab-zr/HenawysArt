@@ -12,7 +12,6 @@ import {
     Menu,
     X,
     UserCircle,
-    Layers, // أيقونة الـ Addons
     Camera, // أيقونة تغيير الصورة
     Loader2,
     Activity
