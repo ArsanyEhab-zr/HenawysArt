@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Loader2, Sparkles, Star, Zap, Truck, Palette, ShieldCheck, Gift } from 'lucide-react'
+import { ArrowRight, Loader2, Sparkles, Truck, Palette, ShieldCheck, Gift } from 'lucide-react'
 import Hero from '../components/Hero'
 import ProductCard from '../components/ProductCard'
 import OrderModal from '../components/OrderModal'
@@ -134,7 +134,9 @@ const Home = () => {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-            {!loading && topProducts.map((product) => (
+            {loading ? (
+              <div className="col-span-full flex justify-center py-10"><Loader2 className="animate-spin text-primary" size={40} /></div>
+            ) : topProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}

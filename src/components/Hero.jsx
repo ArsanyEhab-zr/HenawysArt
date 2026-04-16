@@ -47,7 +47,7 @@ const Hero = () => {
               transition={{ duration: 0.8, delay: 0.6 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 bg-accent text-text font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="inline-flex items-center gap-2 bg-accent text-gray-900 font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
               Explore Collection
               <ArrowRight size={20} />

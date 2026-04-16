@@ -41,7 +41,7 @@ const Contact = () => {
       })
       .catch(error => {
         console.error('Error!', error.message)
-        alert('تأكد من الرابط الجديد وصلاحيات الـ Anyone')
+        alert('تأكد من الرابط الجديد وصلاحياته')
         setIsSubmitting(false)
       })
   }

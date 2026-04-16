@@ -4,6 +4,7 @@ import {
     TrendingUp, Users, ShoppingBag, DollarSign,
     Package, Clock, CheckCircle, XCircle
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts'
@@ -242,6 +243,7 @@ const DashboardHome = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="text-lg font-bold text-gray-800">Recent Orders</h3>
+                    <Link to="/dashboard/orders" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">View All</Link>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">

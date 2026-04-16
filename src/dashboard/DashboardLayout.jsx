@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import {
     LayoutDashboard,
@@ -13,7 +14,8 @@ import {
     UserCircle,
     Layers, // أيقونة الـ Addons
     Camera, // أيقونة تغيير الصورة
-    Loader2
+    Loader2,
+    Activity
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -165,6 +167,12 @@ const DashboardLayout = () => {
             label: 'Settings',
             roles: ['admin']
         },
+        {
+            path: '/dashboard/visitors',
+            icon: Activity,
+            label: 'Visitors',
+            roles: ['admin']
+        },
     ]
 
     if (loading) {
@@ -252,8 +260,12 @@ const DashboardLayout = () => {
                                         }
                                     `}
                                 >
-                                    <item.icon size={20} className={({ isActive }) => isActive ? 'text-indigo-600' : 'text-gray-400'} />
-                                    {item.label}
+                                    {({ isActive }) => (
+                                        <>
+                                            <item.icon size={20} className={isActive ? 'text-indigo-600' : 'text-gray-400'} />
+                                            {item.label}
+                                        </>
+                                    )}
                                 </NavLink>
                             )
                         ))}
@@ -292,15 +304,26 @@ const DashboardLayout = () => {
             </main>
 
             {/* 👇👇👇 Profile Edit Modal 👇👇👇 */}
-            {isProfileModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800">Edit Profile</h3>
-                            <button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                <X size={20} />
-                            </button>
-                        </div>
+            <AnimatePresence>
+                {isProfileModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+                        >
+                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                                <h3 className="font-bold text-gray-800">Edit Profile</h3>
+                                <button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={20} />
+                                </button>
+                            </div>
 
                         <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
 
@@ -360,9 +383,10 @@ const DashboardLayout = () => {
                                 {isUpdatingProfile ? <Loader2 className="animate-spin" size={20} /> : 'Save Changes'}
                             </button>
                         </form>
-                    </div>
-                </div>
-            )}
+                    </motion.div>
+                </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
