@@ -2,7 +2,6 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import Navbar from '../components/Navbar'
 import ProductCard from '../components/ProductCard'
 import OrderModal from '../components/OrderModal'
 import { supabase } from '../supabaseClient'
@@ -100,7 +99,6 @@ const CategoryPage = () => {
   if (!products || products.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0f172a] p-4 transition-colors duration-300">
-        <Navbar />
         <div className="text-center mt-20">
           <h1 className="text-3xl font-script text-text dark:text-[#e2e8f0] mb-4">Category not found</h1>
           <p className="text-gray-500 dark:text-[#94a3b8] mb-8">
@@ -121,8 +119,6 @@ const CategoryPage = () => {
   return (
     // 👇 الخلفية الرئيسية
     <div className="min-h-screen bg-white dark:bg-[#0f172a] transition-colors duration-300">
-      <Navbar />
-
       {/* Header Section */}
       <section className="pt-32 pb-12 bg-white dark:bg-[#0f172a]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

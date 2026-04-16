@@ -3,6 +3,7 @@ import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, Store, Truck, Nav
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import emailjs from '@emailjs/browser';
 
 const CartDrawer = ({ isOpen, onClose }) => {
     const { cartItems, removeFromCart, clearCart, userInfo, updateUserInfo } = useCart();
@@ -234,6 +235,19 @@ const CartDrawer = ({ isOpen, onClose }) => {
             }]);
 
             if (orderError) throw orderError;
+
+            // 📧 Send EmailJS notification (silent — must not block UI)
+            try {
+                const templateParams = {
+                    customer_name: userInfo.customerName,
+                    customer_phone: userInfo.phone,
+                    product_name: cartItems.map(item => item.product.title).join(' + '),
+                    customer_address: userInfo.deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : userInfo.address,
+                };
+                await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, 'YOUR_PUBLIC_KEY');
+            } catch (emailError) {
+                console.error('EmailJS failed (order is safe):', emailError);
+            }
 
             // 👇 السطر السحري اللي بيحفظ الرقم عشان يشغل ودجت التتبع 👇
             localStorage.setItem('henawy_tracked_phone', userInfo.phone.trim());

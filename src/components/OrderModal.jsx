@@ -284,7 +284,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+            className="w-full max-w-lg bg-white dark:bg-[#1e293b] rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-colors duration-300"
           >
 
             {/* Header Sticky */}
@@ -311,8 +311,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               {/* Addons Grid */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                  <Palette size={16} className="text-primary" /> Customizations
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                  <Palette size={16} className="text-primary dark:text-primary-light" /> Customizations
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {loadingAddons ? <div className="col-span-full py-4 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div> : availableAddons.map(addon => {
@@ -327,9 +327,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                         key={addon.id}
                         onClick={() => handleToggleAddon(addon)}
                         className={`relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer group
-                                ${isSelected
+                          ${isSelected
                             ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                            : 'border-gray-100 hover:border-primary/50 hover:shadow-md bg-white'
+                            : 'border-gray-100 dark:border-gray-700 hover:border-primary/50 hover:shadow-md bg-white dark:bg-[#0f172a]'
                           }`}
                       >
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
@@ -338,8 +338,8 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                         </div>
 
                         <div className="flex-1">
-                          <p className={`font-bold text-sm ${isSelected ? 'text-primary-dark' : 'text-gray-700'}`}>{addon.title}</p>
-                          <p className="text-xs text-primary font-bold mt-0.5">{priceTag}</p>
+                          <p className={`font-bold text-sm ${isSelected ? 'text-primary-dark dark:text-primary-light' : 'text-gray-700 dark:text-gray-300'}`}>{addon.title}</p>
+                          <p className="text-xs text-primary dark:text-primary-light font-bold mt-0.5">{priceTag}</p>
                         </div>
                         {addon.image_url && <img src={addon.image_url} alt="" className="w-10 h-10 rounded-md object-cover border border-gray-100" />}
                       </div>
@@ -350,9 +350,9 @@ const OrderModal = ({ isOpen, onClose, product }) => {
 
               {/* Image Upload */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Reference Image (Optional)</label>
-                <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:bg-gray-50 
-                    ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/40'}`}>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Reference Image (Optional)</label>
+                <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-slate-800/50 
+                    ${selectedFile ? 'border-primary bg-primary/5' : 'border-gray-300 dark:border-gray-600 hover:border-primary/40'}`}>
                   <input type="file" accept="image/*" className="hidden" id="image-upload" onChange={(e) => setSelectedFile(e.target.files[0])} />
                   <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-3">
                     {selectedFile ? (
@@ -363,37 +363,37 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                       </>
                     ) : (
                       <>
-                        <div className="bg-gray-100 p-3 rounded-full text-gray-500"><Upload size={24} /></div>
-                        <span className="text-sm font-medium text-gray-600">Click to upload your photo</span>
+                        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-full text-gray-500 dark:text-gray-400"><Upload size={24} /></div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Click to upload your photo</span>
                       </>
                     )}
                   </label>
                 </div>
               </div>
 
-              <hr className="border-gray-100" />
+              <hr className="border-gray-100 dark:border-gray-700" />
 
               {/* Text & Color */}
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Type size={16} className="text-primary" /> Text on Item</label>
-                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Name, Date, or Quote..." className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2"><Type size={16} className="text-primary" /> Text on Item</label>
+                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)} placeholder="Name, Date, or Quote..." className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-[#0f172a] text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2"><Palette size={16} className="text-primary" /> Background Color</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2"><Palette size={16} className="text-primary" /> Background Color</label>
                   <div className="flex gap-2">
-                    <div className="relative overflow-hidden w-14 h-[50px] rounded-xl border border-gray-200 shadow-sm shrink-0 cursor-pointer hover:shadow-md transition-shadow">
+                    <div className="relative overflow-hidden w-14 h-[50px] rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm shrink-0 cursor-pointer hover:shadow-md transition-shadow">
                       <input type="color" value={pickerHex} onChange={e => { const hex = e.target.value; setPickerHex(hex); setBgColor(getColorNameFromHex(hex)); }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer" />
                     </div>
-                    <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Pick or type color..." className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                    <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} placeholder="Pick or type color..." className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white dark:bg-[#0f172a] text-gray-900 dark:text-white" />
                   </div>
                 </div>
               </div>
 
               {/* Coupon Section للمنتج ده */}
               {!product.is_starting_price && (
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                     <Tag size={16} className="text-primary" /> Coupon Code (For this item)
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -402,7 +402,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="SAVE10"
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-xl uppercase font-medium bg-white outline-none focus:border-primary"
+                      className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl uppercase font-medium bg-white dark:bg-[#0f172a] text-gray-900 dark:text-white outline-none focus:border-primary"
                       disabled={!!appliedCoupon}
                     />
                     {appliedCoupon ?
@@ -416,7 +416,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                 </div>
               )}
 
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Any special notes for this item..." />
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl resize-none focus:ring-2 focus:ring-primary/20 outline-none bg-white dark:bg-[#0f172a] text-gray-900 dark:text-white" placeholder="Any special notes for this item..." />
 
               {/* 👇 زراير الإضافة للسلة 👇 */}
               <div className="grid grid-cols-1 gap-3 pt-2">
@@ -432,7 +432,7 @@ const OrderModal = ({ isOpen, onClose, product }) => {
                   type="button"
                   onClick={(e) => handleAddToCart(e, true)}
                   disabled={isUploading}
-                  className={`w-full bg-white border-2 border-gray-200 hover:border-primary text-gray-700 hover:text-primary font-bold py-3 rounded-xl flex justify-center items-center transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}
+                  className={`w-full bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 hover:border-primary text-gray-700 dark:text-gray-300 hover:text-primary font-bold py-3 rounded-xl flex justify-center items-center transition-all active:scale-[0.98] ${isUploading ? 'opacity-70 cursor-wait' : ''}`}
                 >
                   Add to Cart & Continue Shopping
                 </button>

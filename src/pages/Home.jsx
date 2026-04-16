@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Loader2, Sparkles, Star, Zap, Truck, Palette, ShieldCheck, Gift } from 'lucide-react'
-import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import ProductCard from '../components/ProductCard'
 import OrderModal from '../components/OrderModal'
@@ -86,7 +85,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f172a] transition-colors duration-300 overflow-x-hidden">
-      <Navbar />
       <Hero />
 
       {/* ✨ Features Strip Section (تعديل: رفعناه لفوق بتأثير زجاجي) ✨ */}

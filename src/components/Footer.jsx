@@ -4,14 +4,14 @@ import { motion } from 'framer-motion'
 
 const Footer = () => {
   return (
-    <footer className="bg-white pt-16 pb-8 border-t border-gray-100">
+    <footer className="bg-white dark:bg-[#0f172a] transition-colors duration-300 pt-16 pb-8 border-t border-gray-100 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
 
           {/* 1. About Section */}
           <div>
-            <h3 className="text-xl font-bold text-primary mb-6 font-script">About Henawy's Art</h3>
-            <p className="text-gray-600 leading-relaxed text-sm mb-6">
+            <h3 className="text-xl font-bold text-primary dark:text-primary-light mb-6 font-script">About Henawy's Art</h3>
+            <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-sm mb-6 transition-colors duration-300">
               Specialized in creating best memories. We transform your photos into timeless faceless art on natural wood slices, customized medals, and frames. High quality service for your home.
             </p>
             <div className="flex gap-4">
@@ -36,38 +36,38 @@ const Footer = () => {
 
           {/* 2. Help & FAQ */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Help & FAQ</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li><Link to="/policies#shipping" className="hover:text-primary transition-colors">Shipping Policy</Link></li>
-              <li><Link to="/policies#returns" className="hover:text-primary transition-colors">Returns & Refunds</Link></li>
-              <li><Link to="/contact" className="hover:text-primary transition-colors">Customer Service</Link></li>
-              <li><Link to="/policies#privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6 transition-colors duration-300">Help & FAQ</h3>
+            <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
+              <li><Link to="/policies#shipping" className="hover:text-primary dark:hover:text-primary-light transition-colors">Shipping Policy</Link></li>
+              <li><Link to="/policies#returns" className="hover:text-primary dark:hover:text-primary-light transition-colors">Returns & Refunds</Link></li>
+              <li><Link to="/contact" className="hover:text-primary dark:hover:text-primary-light transition-colors">Customer Service</Link></li>
+              <li><Link to="/policies#privacy" className="hover:text-primary dark:hover:text-primary-light transition-colors">Privacy Policy</Link></li>
             </ul>
           </div>
 
           {/* 3. Important Links */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Quick Links</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
-              <li><Link to="/shop" className="hover:text-primary transition-colors">Shop All</Link></li>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6 transition-colors duration-300">Quick Links</h3>
+            <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
+              <li><Link to="/about" className="hover:text-primary dark:hover:text-primary-light transition-colors">About Us</Link></li>
+              <li><Link to="/shop" className="hover:text-primary dark:hover:text-primary-light transition-colors">Shop All</Link></li>
             </ul>
           </div>
 
           {/* 4. Contact Us */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Contact Us</h3>
-            <ul className="space-y-4 text-sm text-gray-600">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6 transition-colors duration-300">Contact Us</h3>
+            <ul className="space-y-4 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
               <li className="flex items-center gap-3">
-                <Phone size={18} className="text-primary" />
+                <Phone size={18} className="text-primary dark:text-primary-light transition-colors duration-300" />
                 <span dir="ltr">+20 1280140268</span>
               </li>
               <li className="flex items-center gap-3">
-                <Mail size={18} className="text-primary" />
+                <Mail size={18} className="text-primary dark:text-primary-light transition-colors duration-300" />
                 <span>marinahenawy38@gmail.com</span>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-primary mt-1" />
+                <MapPin size={18} className="text-primary dark:text-primary-light mt-1 transition-colors duration-300" />
                 <span>Egypt, Alexandria</span>
               </li>
             </ul>
@@ -76,28 +76,28 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors duration-300">
 
           <div className="flex flex-col md:flex-row items-center gap-4">
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">
               © 2026 Henawy's Art. All rights reserved.
             </p>
 
             <Link
               to="/login"
-              className="text-xs text-gray-300 hover:text-primary transition-colors flex items-center gap-1"
+              className="text-xs text-gray-300 dark:text-gray-600 hover:text-primary dark:hover:text-primary-light transition-colors flex items-center gap-1"
               title="Staff Access Only"
             >
               <Lock size={12} /> Staff Login
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-800/50 px-4 py-2 rounded-full transition-colors duration-300">
             <span>Built with support from</span>
             <Link
               to="/developer"
               onClick={() => window.scrollTo(0, 0)}
-              className="text-primary font-bold hover:underline flex items-center gap-1"
+              className="text-primary dark:text-primary-light font-bold hover:underline flex items-center gap-1 transition-colors duration-300"
             >
               Arsany zika <Heart size={14} className="fill-current" />
             </Link>
@@ -118,7 +118,7 @@ const SocialLink = ({ href, icon, hoverClass }) => {
       target="_blank"
       rel="noopener noreferrer"
       whileHover={{ y: -3 }}
-      className={`w-10 h-10 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-all duration-300 ${hoverClass}`}
+      className={`w-10 h-10 bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 transition-all duration-300 ${hoverClass}`}
     >
       {icon}
     </motion.a>

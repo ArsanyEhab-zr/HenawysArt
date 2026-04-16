@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { Phone, Mail, MapPin, MessageCircle, Send, Lightbulb } from 'lucide-react'
 import { useState } from 'react'
-import Navbar from '../components/Navbar'
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -77,8 +76,6 @@ const Contact = () => {
   return (
     // 👇 خلفية الصفحة كحلي في الدارك
     <div className="min-h-screen bg-white dark:bg-[#0f172a] transition-colors duration-300">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="pt-24 pb-20 bg-background dark:bg-[#0f172a]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
