@@ -245,7 +245,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
                     customer_address: userInfo.deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : userInfo.address,
                 };
                 console.log("Sending Email with params:", templateParams);
-                const result = await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, 'JfEZdohwkVya9WF7Kjf2W');
+                const result = await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, {
+                    publicKey: 'JfEZdohwkVya9WF7Kjf2W',
+                });
                 console.log("Email Result:", result);
             } catch (emailError) {
                 console.error('EmailJS failed (order is safe):', emailError);
