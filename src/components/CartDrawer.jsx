@@ -246,7 +246,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 };
                 console.log("Sending Email with params:", templateParams);
                 const result = await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, {
-                    publicKey: 'JfEZdohwkVya9WF7Kjf2W',
+                    publicKey: 'Ar-jCVYAwOgEKwT38',
                 });
                 console.log("Email Result:", result);
             } catch (emailError) {
