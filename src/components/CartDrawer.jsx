@@ -244,7 +244,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
                     product_name: cartItems.map(item => item.product.title).join(' + '),
                     customer_address: userInfo.deliveryMethod === 'pickup' ? "Henawy's Art HQ (Pickup)" : userInfo.address,
                 };
-                await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, 'YOUR_PUBLIC_KEY');
+                console.log("Sending Email with params:", templateParams);
+                const result = await emailjs.send('service_82ebumh', 'template_n2mpz0e', templateParams, 'JfEZdohwkVya9WF7Kjf2W');
+                console.log("Email Result:", result);
             } catch (emailError) {
                 console.error('EmailJS failed (order is safe):', emailError);
             }
