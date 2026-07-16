@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, Store, Truck, Navigation, Check, AlertCircle, Wallet, Tag } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, Store, Truck, Navigation, Check, AlertCircle, Wallet, Tag, ShieldAlert } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import emailjs from '@emailjs/browser';
+import { toast } from 'react-hot-toast';
 
 const CartDrawer = ({ isOpen, onClose }) => {
     const { cartItems, removeFromCart, clearCart, userInfo, updateUserInfo } = useCart();
@@ -13,6 +14,9 @@ const CartDrawer = ({ isOpen, onClose }) => {
     const [shippingLoading, setShippingLoading] = useState(true);
     const [isLocating, setIsLocating] = useState(false);
     const [gpsError, setGpsError] = useState('');
+
+    // 👇 ستيت الموافقة على الديبوزيت (الجديدة) 👇
+    const [agreedToDeposit, setAgreedToDeposit] = useState(false);
 
     // 👇 ستيت كوبون السلة
     const [cartCouponCode, setCartCouponCode] = useState('');
@@ -39,6 +43,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen) {
             fetchShippingRates();
+            setAgreedToDeposit(false); // إعادة تعيين الشيك بوكس لما السلة تفتح
         }
     }, [isOpen]);
 
@@ -166,6 +171,12 @@ const CartDrawer = ({ isOpen, onClose }) => {
 
     const handleCheckout = async (e) => {
         e.preventDefault();
+
+        // 👇 التحقق من الموافقة على الديبوزيت 👇
+        if (!agreedToDeposit) {
+            alert("You must agree to the deposit policy before ordering.");
+            return;
+        }
 
         if (!userInfo.customerName.trim() || !userInfo.phone.trim()) {
             alert('Please enter Name and Phone'); return;
@@ -323,6 +334,8 @@ const CartDrawer = ({ isOpen, onClose }) => {
             message += `*IMPORTANT NOTES*\n`;
             message += `1. Processing Time: 10-14 Working Days.\n`;
             message += `2. Payment: 50% Deposit required via Wallet.\n`;
+            message += `\n✅ _Customer agreed to the 50% deposit policy._\n`;
+            message += `Here is my transfer receipt:`;
 
             const encodedMessage = encodeURIComponent(message);
             window.open(`https://api.whatsapp.com/send?phone=201280140268&text=${encodedMessage}`, '_blank');
@@ -488,7 +501,64 @@ const CartDrawer = ({ isOpen, onClose }) => {
                                             <span className="text-accent">{grandTotal} EGP</span>
                                         </div>
 
-                                        <button type="submit" disabled={isSubmitting} className="w-full bg-accent hover:bg-yellow-400 text-gray-900 font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg transition-all active:scale-[0.98]">
+                                        {/* ⚠️ Mandatory Warning Checkbox & Payment Links ⚠️ */}
+                                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-3 mb-4 transition-colors">
+                                            <div className="mt-0.5">
+                                                <input
+                                                    type="checkbox"
+                                                    required
+                                                    checked={agreedToDeposit}
+                                                    onChange={(e) => setAgreedToDeposit(e.target.checked)}
+                                                    className="w-5 h-5 accent-orange-500 cursor-pointer"
+                                                    id="deposit-check"
+                                                />
+                                            </div>
+                                            <div className="text-xs text-orange-900 leading-tight flex-1">
+                                                <label htmlFor="deposit-check" className="cursor-pointer">
+                                                    <span className="font-bold flex items-center gap-1 mb-1 text-orange-700">
+                                                        <ShieldAlert size={14} /> Important Notice
+                                                    </span>
+                                                    I understand that a <strong>50% deposit</strong> is required via Mobile Wallet to the number <strong className="font-mono text-sm">01280140268</strong>. I will send the payment screenshot on WhatsApp.
+                                                </label>
+
+                                                <div className="flex gap-2 mt-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText('01280140268');
+                                                            toast.success('Number copied! Opening InstaPay...', { icon: '🚀' });
+                                                            setTimeout(() => {
+                                                                window.location.href = "instapay://";
+                                                            }, 1000);
+                                                        }}
+                                                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold py-2.5 px-2 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                                                    >
+                                                        Open InstaPay
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText('01280140268');
+                                                            toast.success('Wallet Number Copied! 📱');
+                                                        }}
+                                                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold py-2.5 px-2 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                                                    >
+                                                        Copy Wallet No.
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 👇 زر تأكيد الأوردر مربوط بالموافقة 👇 */}
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting || !agreedToDeposit}
+                                            className={`w-full bg-accent hover:bg-yellow-400 text-gray-900 font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg transition-all ${(isSubmitting || !agreedToDeposit) ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'}`}
+                                        >
                                             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> Confirm Order</>}
                                         </button>
                                     </div>
