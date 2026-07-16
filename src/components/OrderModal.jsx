@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 // 👇 استيراد الـ Hook بتاع السلة
 import { useCart } from '../context/CartContext'
+import useBackButton from '../hooks/useBackButton'
 
 // 🎨 قائمة الألوان
 const COMMON_COLORS = [
@@ -35,6 +36,9 @@ const getColorNameFromHex = (hex) => {
 };
 
 const OrderModal = ({ isOpen, onClose, product }) => {
+  // Intercept mobile back gesture to close modal instead of navigating away
+  useBackButton(isOpen, onClose, 'order-modal');
+
   // 👇 استخدام السلة
   const { addToCart } = useCart()
 

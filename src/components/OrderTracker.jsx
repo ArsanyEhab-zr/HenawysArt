@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Loader2, CheckCircle2, Paintbrush, Truck, XCircle, Clock } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import useBackButton from '../hooks/useBackButton';
 
 const OrderTracker = () => {
     const [isOpen, setIsOpen] = useState(false);
+
+    // Intercept mobile back gesture to close tracker popup instead of navigating away
+    useBackButton(isOpen, () => setIsOpen(false), 'order-tracker');
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [trackedPhone, setTrackedPhone] = useState('');

@@ -6,6 +6,7 @@ import LanguageToggle from './LanguageToggle'
 import { useCart } from '../context/CartContext'
 import CartDrawer from './CartDrawer'
 import SmartTheme from './SmartTheme' // لو هما في نفس الفولدر
+import useBackButton from '../hooks/useBackButton'
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -14,6 +15,9 @@ const Navbar = () => {
 
   const [isCartOpen, setIsCartOpen] = useState(false)
   const { cartItems } = useCart()
+
+  // Intercept mobile back gesture to close mobile menu instead of navigating away
+  useBackButton(isOpen, () => setIsOpen(false), 'mobile-menu')
 
   const location = useLocation()
 

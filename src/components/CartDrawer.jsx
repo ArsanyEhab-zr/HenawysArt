@@ -1,15 +1,21 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, ShoppingBag, Send, Loader2, MapPin, Phone, Store, Truck, Navigation, Check, AlertCircle, Wallet, Tag, ShieldAlert } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import emailjs from '@emailjs/browser';
 import { toast } from 'react-hot-toast';
+import useBackButton from '../hooks/useBackButton';
+import CheckoutOverlay from './CheckoutOverlay';
 
 const CartDrawer = ({ isOpen, onClose }) => {
+    // Intercept mobile back gesture to close drawer instead of navigating away
+    useBackButton(isOpen, onClose, 'cart-drawer');
     const { cartItems, removeFromCart, clearCart, userInfo, updateUserInfo } = useCart();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [checkoutStage, setCheckoutStage] = useState(null); // null | 'processing' | 'success'
+    const whatsappUrlRef = useRef('');
     const [shippingRatesList, setShippingRatesList] = useState([]);
     const [shippingLoading, setShippingLoading] = useState(true);
     const [isLocating, setIsLocating] = useState(false);
@@ -338,13 +344,27 @@ const CartDrawer = ({ isOpen, onClose }) => {
             message += `Here is my transfer receipt:`;
 
             const encodedMessage = encodeURIComponent(message);
-            window.open(`https://api.whatsapp.com/send?phone=201280140268&text=${encodedMessage}`, '_blank');
+            whatsappUrlRef.current = `https://api.whatsapp.com/send?phone=201280140268&text=${encodedMessage}`;
 
-            clearCart();
-            onClose();
+            // 🎬 Stage 1: Show processing overlay
+            setCheckoutStage('processing');
+
+            // 🎬 Stage 2: After 1.5s → switch to success
+            setTimeout(() => {
+                setCheckoutStage('success');
+
+                // 🎬 Stage 3: After 1s more → redirect to WhatsApp & cleanup
+                setTimeout(() => {
+                    window.open(whatsappUrlRef.current, '_blank');
+                    clearCart();
+                    setCheckoutStage(null);
+                    onClose();
+                }, 1000);
+            }, 1500);
 
         } catch (error) {
             console.error(error);
+            setCheckoutStage(null);
             alert("Error placing order. Please try again.");
         } finally {
             setIsSubmitting(false);
@@ -352,6 +372,8 @@ const CartDrawer = ({ isOpen, onClose }) => {
     };
 
     return (
+        <>
+        <CheckoutOverlay stage={checkoutStage} />
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -569,6 +591,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 </motion.div>
             )}
         </AnimatePresence>
+        </>
     );
 };
 
